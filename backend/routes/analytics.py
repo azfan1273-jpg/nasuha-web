@@ -1,6 +1,6 @@
 import requests
 from flask import Blueprint, jsonify, request
-from config.supabase_config import SUPABASE_URL, get_supabase_headers
+from config.supabase_config import supabase
 
 analytics_bp = Blueprint('analytics', __name__)
 

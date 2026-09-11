@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nasuha Labs</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- Buka Pembungkus Utama -->
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+
+    <div class="main-wrapper">
+      <div id="header-container"></div>
+      <main id="content-area" class="content-area">
+        <!-- Konten Halaman -->
+      </main>
+    </div>
+  </div>
+  <!-- Tutup Pembungkus Utama -->
+
+  <script src="assets/js/app.js"></script>
+
+	<!-- Modal Form Login -->
+	<div id="login-modal" class="modal-overlay hidden">
+	  <div class="modal-card">
+	    <div class="modal-header">
+	      <h3>Login Akun Kasir</h3>
+	      <button id="btn-close-login" class="btn-close">&times;</button>
+	    </div>
+	    <form id="form-login" class="modal-body">
+	      <div class="form-group">
+	        <label for="login-email">Email Toko / Kasir</label>
+	        <input type="email" id="login-email" placeholder="nama@laundry.com" required />
+	      </div>
+	      <div class="form-group">
+	        <label for="login-password">Password</label>
+	        <input type="password" id="login-password" placeholder="••••••••" required />
+	      </div>
+	      <div id="login-error-msg" class="error-msg hidden"></div>
+	      <button type="submit" id="btn-submit-login" class="btn-primary btn-block">Masuk</button>
+	    </form>
+	  </div>
+	</div>
+  
+</body>
+</html>

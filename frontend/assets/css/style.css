@@ -1,0 +1,574 @@
+/* ==========================================
+   PERBAIKAN KUNCI LAYAR (PRECISE VIEWPORT)
+   ========================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Gunakan 100dvh (Dynamic Viewport Height) agar pas dengan address bar browser */
+html, body {
+  height: 100%;
+  max-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: #2b2b2b;
+  color: #ffffff;
+}
+
+/* Layout App Utama */
+.app-layout {
+  display: flex;
+  width: 100%;
+  height: 100%; /* Mengikuti tinggi body yang dikunci */
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+#sidebar-container {
+  height: 100%;
+  max-height: 100vh;
+  flex-shrink: 0;
+  display: flex; /* Memastikan turunan sidebar mengikuti tinggi container */
+}
+
+/* Sidebar Utama */
+.sidebar {
+  width: 240px;
+  height: 100%;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #3a3a3a 0%, #202020 100%);
+  border-right: 1px solid #444444;
+  overflow: hidden; /* Mengunci total frame luar sidebar */
+}
+
+/* Brand Header */
+.brand-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 16px 14px;
+  gap: 12px;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #333333;
+  flex-shrink: 0; /* Dilarang ciut */
+}
+
+.brand-logo-wrapper {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  width: 100%;
+  height: 100%;
+}
+
+.brand-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* Menu Atas (Main Nav) */
+.nav-top {
+  flex: 1;
+  overflow-y: auto; /* HANYA area ini yang bisa di-scroll jika menu panjang */
+  list-style: none;
+  padding: 10px 0;
+}
+
+/* Menu Bawah (System Nav) */
+.nav-bottom {
+  margin-top: auto;
+  flex-shrink: 0; /* Dilarang ciut/ambles */
+  list-style: none;
+  padding-bottom: 15px;
+  background-color: #202020;
+  border-top: 1px solid #333333;
+}
+
+/* Item Menu Link */
+.nav-item a {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  color: #cccccc;
+  text-decoration: none;
+  gap: 12px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-item a:hover,
+.nav-item.active a {
+  background-color: #4a4a4a;
+  color: #ffffff;
+}
+
+.divider {
+  height: 1px;
+  background-color: #444444;
+  margin: 10px 0;
+  list-style: none;
+}
+
+/* Main Content Wrapper (Area Kanan) */
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+/* Top Header Kanan */
+.top-header {
+  background-color: #222222;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #333333;
+  flex-shrink: 0;
+}
+
+.page-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-profile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+/* Efek saat kursor diarahkan ke profil/login */
+.user-profile:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.user-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.user-text-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 17px;
+}
+
+.text-login {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #28c8ff;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.text-register {
+  font-size: 0.75rem;
+  color: #aaaaaa;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.content-area {
+  flex: 1;
+  padding: 24px;
+  background-color: #333333;
+  overflow-y: auto;
+}
+
+
+
+
+
+
+/* ==========================================
+   DATABASE COMPONENT STYLES
+   ========================================== */
+.database-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-primary {
+  background-color: #0088ff;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: #0066cc;
+}
+
+/* Stats Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background-color: #222222;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #333333;
+}
+
+.stat-icon {
+  font-size: 2rem;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #aaaaaa;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.text-success { color: #00e676; }
+
+/* ==========================================
+   STYLING GARIS & SHADOW TABEL DATABASE
+   ========================================== */
+
+/* Card Pembungkus Tabel dengan Shadow Soft */
+.table-card {
+  background-color: #1c1c1e;
+  border-radius: 10px;
+  border: 1px solid #333338;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); /* Efek Shadow Halus */
+  overflow: hidden;
+}
+
+/* Pengaturan Garis Tabel */
+.custom-table {
+  width: 100%;
+  border-collapse: collapse; /* Menyatukan garis agar tidak berjarak aneh */
+  text-align: left;
+}
+
+/* Garis Border Vertikal & Horizontal untuk Header dan Sel Data */
+.custom-table th, 
+.custom-table td {
+  padding: 12px 14px;
+  border: 1px solid #333338; /* Garis sel tipis halus */
+  font-size: 0.85rem;
+}
+
+/* Header Utama */
+.custom-table th {
+  background-color: #141416;
+  color: #a1a1aa;
+  font-weight: 600;
+  border-bottom: 2px solid #3f3f46; /* Garis agak tebal di bawah header */
+}
+
+/* Sub-Header Tanggal */
+.custom-table th.th-tanggal-group {
+  text-align: center;
+  background-color: #0f0f11;
+}
+
+.custom-table th.sub-th {
+  background-color: #18181b;
+  color: #28c8ff;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+/* Efek Sorot (Hover) Baris Tabel */
+.custom-table tbody tr:hover {
+  background-color: #27272a; /* Warna berubah saat kursor/sentuhan mengarah ke baris */
+}
+
+/* ==========================================
+   PERBAIKAN HEADER TABEL (TITLE & SEARCH)
+   ========================================== */
+
+.table-header {
+  padding: 16px 20px;
+  display: flex; /* Mengatur judul di KIRI, pencarian di KANAN */
+  justify-content: space-between;
+  align-items: center;
+  background-color: #141416;
+  border-bottom: 1px solid #333338;
+}
+
+.table-header h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Input Pencarian Rapi di Kanan */
+.search-input {
+  background-color: #1c1c1e;
+  border: 1px solid #3f3f46;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  width: 220px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  border-color: #28c8ff;
+  box-shadow: 0 0 8px rgba(40, 200, 255, 0.2);
+}
+
+.search-input::placeholder {
+  color: #71717a;
+}
+
+
+
+
+/* ==========================================
+   DOWNLOAD COMPONENT STYLES
+   ========================================== */
+.download-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-desc {
+  color: #aaaaaa;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.download-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.download-card {
+  background-color: #1c1c1e;
+  border: 1px solid #333338;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.app-icon {
+  font-size: 2.5rem;
+  background-color: #141416;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #27272a;
+}
+
+.app-details {
+  flex: 1;
+}
+
+.app-details h3 {
+  font-size: 1.1rem;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.app-meta {
+  font-size: 0.8rem;
+  color: #28c8ff;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.app-desc {
+  font-size: 0.85rem;
+  color: #aaaaaa;
+  line-height: 1.4;
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+
+
+
+
+
+/* ==========================================
+   LOGIN MODAL STYLES
+   ========================================== */
+.hidden {
+  display: none !important;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease;
+}
+
+/* Saat ada class .hidden, paksa hilang total */
+.modal-overlay.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.modal-card {
+  background-color: #1c1c1e;
+  border: 1px solid #333338;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  color: #ffffff;
+  font-size: 1.1rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  color: #aaaaaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  color: #aaaaaa;
+}
+
+.form-group input {
+  background-color: #141416;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #28c8ff;
+}
+
+.btn-block {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.error-msg {
+  color: #ff5252;
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+#btn-login, #nav-login-btn, .user-profile {
+  cursor: pointer;
+  user-select: none;
+}

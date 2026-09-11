@@ -1,0 +1,47 @@
+<div class="clay-engine-container">
+  <div class="section-header">
+    <h2>AI Customer Insight Engine</h2>
+    <span class="badge badge-info" style="background-color: #0088ff;">Clay Engine Active</span>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="stats-grid" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+    <div class="stat-card" style="background: #252528; padding: 14px; border-radius: 10px; border-left: 4px solid #00E676;">
+      <span class="stat-label" style="font-size: 0.8rem; color: #aaa;">Potensi Masuk</span>
+      <div id="stat-total-potensial" style="font-size: 1.3rem; font-weight: bold; color: #00E676; margin-top: 4px;">0 Pelanggan</div>
+      <small style="color: #666; font-size: 0.75rem;">Prediksi Akurasi AI 90%+</small>
+    </div>
+
+    <div class="stat-card" style="background: #252528; padding: 14px; border-radius: 10px; border-left: 4px solid #ffc107;">
+      <span class="stat-label" style="font-size: 0.8rem; color: #aaa;">Proyeksi Kas</span>
+      <div id="stat-total-omset" style="font-size: 1.3rem; font-weight: bold; color: #ffc107; margin-top: 4px;">Rp 0</div>
+      <small style="color: #666; font-size: 0.75rem;">Estimasi Esok Hari</small>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 24px; font-size: 1rem; color: #fff;">Prediksi Pelanggan Datang Esok Hari</h3>
+  <p style="color: #888; font-size: 0.8rem; margin-bottom: 12px;">Geser tabel ke kanan untuk melihat status RFM & tombol Follow Up WA</p>
+
+  <!-- Container Tabel (Tampilan Mirip Frozen Column Flutter) -->
+  <div class="table-card" style="overflow-x: auto; background: #2A2A2E; border-radius: 10px; border: 1px solid #333;">
+    <table class="custom-table" style="width: 100%; min-width: 800px; border-collapse: collapse;">
+      <thead>
+        <tr style="background: #252528; text-align: left; color: #aaa; font-size: 0.8rem;">
+          <th style="padding: 12px;">Pelanggan</th>
+          <th style="padding: 12px;">Skor AI</th>
+          <th style="padding: 12px;">Analisis Siklus</th>
+          <th style="padding: 12px;">Est. Omset</th>
+          <th style="padding: 12px;">Layanan Favorit</th>
+          <th style="padding: 12px;">Total Tx</th>
+          <th style="padding: 12px;">Kontribusi</th>
+          <th style="padding: 12px; text-align: center;">Follow-Up</th>
+        </tr>
+      </thead>
+      <tbody id="clay-table-body">
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 20px; color: #888;">Memuat prediksi data...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

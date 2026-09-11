@@ -1,18 +1,12 @@
 import os
-from dotenv import load_dotenv
+from supabase import create_client, Client
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-# Load file .env yang ada di folder root backend
-load_dotenv(os.path.join(base_dir, '..', '.env'))
+url: str = os.environ.get("SUPABASE_URL", "")
+key: str = os.environ.get("SUPABASE_KEY", "")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+if not url or not key:
+    # Jangan raise Exception agar app tidak mati total saat Vercel build, 
+    # melainkan cetak warning untuk logging.
+    print("WARNING: SUPABASE_URL atau SUPABASE_KEY belum terkonfigurasi di environment!")
 
-def get_supabase_headers(auth_header=None):
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Content-Type": "application/json"
-    }
-    if auth_header:
-        headers["Authorization"] = auth_header
-    return headers
+supabase: Client = create_client(url, key)

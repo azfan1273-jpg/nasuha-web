@@ -1,12 +1,17 @@
 import os
 from supabase import create_client, Client
 
-url: str = os.environ.get("SUPABASE_URL", "")
-key: str = os.environ.get("SUPABASE_KEY", "")
+# Ambil dari Environment Variables
+SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY: str = os.environ.get("SUPABASE_KEY", "")
 
-if not url or not key:
-    # Jangan raise Exception agar app tidak mati total saat Vercel build, 
-    # melainkan cetak warning untuk logging.
-    print("WARNING: SUPABASE_URL atau SUPABASE_KEY belum terkonfigurasi di environment!")
+# Inisialisasi client Supabase
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
-supabase: Client = create_client(url, key)
+# Fungsi pembuat header untuk request manual via module requests
+def get_supabase_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }

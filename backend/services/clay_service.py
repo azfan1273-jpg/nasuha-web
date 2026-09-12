@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from collections import defaultdict, Counter
+from config.supabase_config import supabase
 
 def calculate_tomorrow_prediction(orders):
     if not orders:
@@ -21,12 +22,9 @@ def calculate_tomorrow_prediction(orders):
             if s_name:
                 service_counter[s_name] += 1
 
-    # Ambang batas minimum layanan rutin (misal >= 10x pemesanan global)
-    # Layanan di bawah kuota ini dianggap 'Event/Insidental' dan diabaikan dari prediksi
     MIN_SERVICE_THRESHOLD = 10
     routine_services = {srv for srv, count in service_counter.items() if count >= MIN_SERVICE_THRESHOLD}
 
-    # Data ringkasan Top Services untuk UI Penanda
     top_services_summary = []
     for srv, count in service_counter.most_common():
         top_services_summary.append({
@@ -48,10 +46,8 @@ def calculate_tomorrow_prediction(orders):
         created_at_str = order.get("created_at")
 
         items = order.get("order_items") or []
-        # Ambil layanan favorit pelanggan yang masuk kategori rutin
         valid_items = [i.get("service_name") for i in items if i.get("service_name") in routine_services]
         
-        # Jika transaksi ini murni cuci event (tidak ada item rutin), lewati transaksi ini dari perhitungan siklus
         if not valid_items and items:
             continue
 
@@ -84,7 +80,6 @@ def calculate_tomorrow_prediction(orders):
     for name, tx_list in customer_map.items():
         total_tx = len(tx_list)
         
-        # SYARAT: Minimal 3 transaksi rutin agar punya data siklus yang valid
         if total_tx < 3:
             continue
 
@@ -99,7 +94,6 @@ def calculate_tomorrow_prediction(orders):
         favorite_service = max(set(services), key=services.count)
         contribution_pct = round((total_spend / total_store_revenue * 100)) if total_store_revenue > 0 else 0
 
-        # Hitung interval rata-rata antar cuci (avg_cycle)
         intervals = []
         for i in range(len(tx_list) - 1):
             diff = (tx_list[i]["date"] - tx_list[i+1]["date"]).days
@@ -108,12 +102,10 @@ def calculate_tomorrow_prediction(orders):
         
         avg_cycle = round(sum(intervals) / len(intervals)) if intervals else 7
 
-        # Penentuan Tag & Skor
         tag = "Aktif"
         if total_tx >= 5 and total_spend >= 150000:
             tag = "VIP"
 
-        # Cek apakah tanggal hari ini pas dengan jadwal rutinnya
         if days_since_last > (avg_cycle + 7):
             tag = "Resiko Churn"
             score = 35
@@ -142,13 +134,29 @@ def calculate_tomorrow_prediction(orders):
             "contribution": f"{contribution_pct}%"
         })
 
-    # Filter hanya yang berpeluang tinggi (skor >= 70) & ambil Top 5 paling mendekati riil toko
     filtered_predictions = [p for p in predictions if p["score"] >= 70]
     filtered_predictions.sort(key=lambda x: x["score"], reverse=True)
-    top_predictions = filtered_predictions[:5] # Batasi max 5 pelanggan per hari
+    top_predictions = filtered_predictions[:5]
 
     return {
         "top_services": top_services_summary,
         "predictions": top_predictions
     }
 
+def get_clay_predictions(store_id):
+    """
+    Fungsi wrapper yang dipanggil dari routes/clay_engine.py.
+    Mengambil data pesanan dari Supabase sesuai store_id lalu memproses prediksinya.
+    """
+    try:
+        response = (
+            supabase.table("orders")
+            .select("*, order_items(*)")
+            .eq("store_id", store_id)
+            .execute()
+        )
+        orders = response.data or []
+        return calculate_tomorrow_prediction(orders)
+    except Exception as e:
+        print(f"Error fetching orders for clay prediction: {str(e)}")
+        return {"top_services": [], "predictions": []}

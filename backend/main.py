@@ -51,14 +51,22 @@ def login():
     except Exception as e:
         # Menangkap error 401 dari Supabase Auth
         return jsonify({'error': str(e)}), 401                
-# Route Frontend Web Static
-@app.route('/')
-def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
 
+# Route Frontend Web Static (Handling Static & SPA Fallback)
+@app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory(app.static_folder, path)
+    # Jika request mengarah ke API tapi tidak ketemu route-nya, kembalikan 404 JSON (jangan kirim HTML)
+    if path.startswith('api/'):
+        return jsonify({'error': 'Endpoint API tidak ditemukan'}), 404
 
+    # Cek apakah file fisik (css, js, png, dll) ada di folder frontend
+    target_path = os.path.join(app.static_folder, path)
+    if path != "" and os.path.exists(target_path) and os.path.isfile(target_path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        # Jika bukan file fisik atau route halaman web biasa, kirimkan index.html
+        return send_from_directory(app.static_folder, 'index.html')
+        
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

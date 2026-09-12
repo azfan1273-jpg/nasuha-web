@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Load Halaman Default
   const contentArea = document.getElementById("content-area");
   if (contentArea) {
-    contentArea.innerHTML = "<h2>Overview</h2><p>Selamat datang di Dashboard Nasuha Web.</p>";
+    contentArea.innerHTML = "2 OverviewSelamat datang di Dashboard Nasuha Web.";
   }
 
   setupEventListeners();
@@ -58,19 +58,19 @@ function setupEventListeners() {
     navLink.parentElement.classList.add("active");
 
     // Routing Komponen Halaman
-        if (pageName === "Database") {
-          await loadComponent("content-area", "components/database.html");
-          loadDatabaseRealData();
-        } else if (pageName === "Download") {
-          await loadComponent("content-area", "components/download.html");
-          loadDownloadData();
-        } else if (pageName === "Clay Engine") { // <-- PASTIKAN BLOK INI ADA
-          await loadComponent("content-area", "components/clay_engine.html");
-          loadClayEngineData();
-        } else {
+    if (pageName === "Database") {
+      await loadComponent("content-area", "components/database.html");
+      loadDatabaseRealData();
+    } else if (pageName === "Download") {
+      await loadComponent("content-area", "components/download.html");
+      loadDownloadData();
+    } else if (pageName === "Clay Engine") {
+      await loadComponent("content-area", "components/clay_engine.html");
+      loadClayEngineData();
+    } else {
       const contentArea = document.getElementById("content-area");
       if (contentArea) {
-        contentArea.innerHTML = `<h2>${pageName}</h2><p>Halaman ${pageName} sedang dalam pengembangan.</p>`;
+        contentArea.innerHTML = `2 ${pageName}Halaman ${pageName} sedang dalam pengembangan.`;
       }
     }
   });
@@ -124,7 +124,7 @@ function setupAuthListeners() {
   if (formLogin) {
     formLogin.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const errorMsg = document.getElementById("login-error-msg");
+      const errorMsg = document.getElementById("login-error-msg") || document.getElementById("loginError");
       if (errorMsg) errorMsg.classList.add("hidden");
 
       const email = document.getElementById("login-email").value;
@@ -140,9 +140,15 @@ function setupAuthListeners() {
         const result = await res.json();
 
         if (!res.ok) {
-            // Tampilkan pesan error custom dari JSON backend
-            showLoginError(data.error || 'Email atau password salah / tidak terdaftar');
-            return;
+          // Tampilkan pesan error custom dari JSON backend
+          if (errorMsg) {
+            errorMsg.innerText = result.error || 'Email atau password salah / tidak terdaftar';
+            errorMsg.classList.remove("hidden");
+            errorMsg.style.display = 'block';
+          } else {
+            alert(result.error || 'Email atau password salah / tidak terdaftar');
+          }
+          return;
         }
 
         // Simpan Session
@@ -157,8 +163,9 @@ function setupAuthListeners() {
 
       } catch (err) {
         if (errorMsg) {
-          errorMsg.innerText = err.message;
+          errorMsg.innerText = "Gagal terhubung ke server";
           errorMsg.classList.remove("hidden");
+          errorMsg.style.display = 'block';
         }
       }
     });
@@ -283,7 +290,7 @@ async function loadDatabaseRealData() {
   }
 }
 
-// FIX 2: Definisi fungsi loadDownloadData agar nav Download tidak crash
+// Definisi fungsi loadDownloadData agar nav Download tidak crash
 async function loadDownloadData() {
   const container = document.getElementById("download-list-container");
   if (!container) return;
@@ -324,9 +331,7 @@ async function loadDownloadData() {
   }
 }
 
-
-// CLAY ENGINE
-// --- FETCH DATA PREDIKSI CLAY ENGINE ---
+// CLAY ENGINE - FETCH DATA PREDIKSI
 async function loadClayEngineData() {
   const tableBody = document.getElementById("clay-table-body");
   const totalPotensialEl = document.getElementById("stat-total-potensial");
@@ -346,13 +351,11 @@ async function loadClayEngineData() {
 
     const result = await response.json();
     
-    // Penanganan jika ada error (seperti JWT expired)
     if (!response.ok || result.status === "error") {
       const errMsg = typeof result === 'object' ? (result.message || JSON.stringify(result)) : result;
       throw new Error(errMsg);
     }
 
-    // Ambil array predictions dari object response baru
     const predictions = result.predictions || [];
 
     if (predictions.length === 0) {
@@ -362,7 +365,6 @@ async function loadClayEngineData() {
       return;
     }
 
-    // Kalkulasi Total Summary (Presisi Top 3-5 Pelanggan)
     let totalOmset = 0;
     predictions.forEach(item => {
       totalOmset += Number(item.est_spend || 0);
@@ -371,7 +373,6 @@ async function loadClayEngineData() {
     if (totalPotensialEl) totalPotensialEl.innerText = `${predictions.length} Pelanggan`;
     if (totalOmsetEl) totalOmsetEl.innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
 
-    // Render Baris Tabel Prediksi
     if (tableBody) {
       tableBody.innerHTML = predictions.map(item => {
         const tagColor = item.tag === 'VIP' ? '#ffc107' : (item.tag === 'Resiko Churn' ? '#ff5252' : '#00E676');

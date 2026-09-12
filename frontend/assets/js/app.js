@@ -97,8 +97,9 @@ function setupAuthListeners() {
         // --- JIKA SUDAH LOGIN: TAMPILKAN KONFIRMASI LOGOUT ---
         const confirmLogout = confirm("Apakah Anda yakin ingin keluar / logout dari akun ini?");
         if (confirmLogout) {
-          // Hapus token dan info user
+          // Hapus token, store_id, dan info user
           localStorage.removeItem("access_token");
+          localStorage.removeItem("store_id");
           localStorage.removeItem("user_info");
 
           // Re-render UI & Muat Ulang Data
@@ -142,17 +143,18 @@ function setupAuthListeners() {
         if (!res.ok) {
           // Tampilkan pesan error custom dari JSON backend
           if (errorMsg) {
-            errorMsg.innerText = result.error || 'Email atau password salah / tidak terdaftar';
+            errorMsg.innerText = result.error || result.message || 'Email atau password salah / tidak terdaftar';
             errorMsg.classList.remove("hidden");
             errorMsg.style.display = 'block';
           } else {
-            alert(result.error || 'Email atau password salah / tidak terdaftar');
+            alert(result.error || result.message || 'Email atau password salah / tidak terdaftar');
           }
           return;
         }
 
-        // --- PERBAIKAN: Ambil token dari berbagai struktur respon backend/Supabase ---
+        // --- Ambil token dan store_id dari respon backend ---
         const token = result.access_token || (result.session && result.session.access_token);
+        const storeId = result.store_id;
 
         if (!token) {
           if (errorMsg) {
@@ -165,8 +167,11 @@ function setupAuthListeners() {
           return;
         }
 
-        // Simpan Session
+        // Simpan Session ke LocalStorage
         localStorage.setItem("access_token", token);
+        if (storeId) {
+          localStorage.setItem("store_id", storeId);
+        }
         localStorage.setItem("user_info", JSON.stringify(result.user));
 
         if (loginModal) loginModal.classList.add("hidden");
@@ -345,13 +350,14 @@ async function loadDownloadData() {
   }
 }
 
-// CLAY ENGINE - FETCH DATA PREDIKSI
+// CLAY ENGINE - FETCH DATA PREDIKSI TERHUBUNG DENGAN STORE_ID
 async function loadClayEngineData() {
   const tableBody = document.getElementById("clay-table-body");
   const totalPotensialEl = document.getElementById("stat-total-potensial");
   const totalOmsetEl = document.getElementById("stat-total-omset");
 
   const token = localStorage.getItem("access_token");
+  const storeId = localStorage.getItem("store_id");
 
   if (!token) {
     if (tableBody) tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color:#ffb74d;">Sesi habis. Silakan login terlebih dahulu.</td></tr>`;
@@ -359,14 +365,20 @@ async function loadClayEngineData() {
   }
 
   try {
-    const response = await fetch("/api/clay/predict-tomorrow", {
+    // Sisipkan store_id ke query string jika tersedia di localStorage
+    let apiUrl = "/api/clay/predict-tomorrow";
+    if (storeId) {
+      apiUrl += `?store_id=${encodeURIComponent(storeId)}`;
+    }
+
+    const response = await fetch(apiUrl, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
     const result = await response.json();
     
     if (!response.ok || result.status === "error") {
-      const errMsg = typeof result === 'object' ? (result.message || JSON.stringify(result)) : result;
+      const errMsg = typeof result === 'object' ? (result.message || result.error || JSON.stringify(result)) : result;
       throw new Error(errMsg);
     }
 
@@ -375,7 +387,7 @@ async function loadClayEngineData() {
     if (predictions.length === 0) {
       if (totalPotensialEl) totalPotensialEl.innerText = "0 Pelanggan";
       if (totalOmsetEl) totalOmsetEl.innerText = "Rp 0";
-      if (tableBody) tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">Belum ada data riwayat yang mencukupi untuk diprediksi hari ini</td></tr>`;
+      if (tableBody) tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">Belum ada data riwayat yang mencukupi untuk diprediksi hari ini.</td></tr>`;
       return;
     }
 

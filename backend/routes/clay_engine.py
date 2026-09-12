@@ -1,48 +1,51 @@
 from flask import Blueprint, jsonify, request
 from services.clay_service import get_clay_predictions
 from config.supabase_config import supabase
+import jwt
 
 clay_bp = Blueprint('clay', __name__)
 
 @clay_bp.route('/predict-tomorrow', methods=['GET'])
 def predict_tomorrow():
     try:
-        # 1. Ambil token dari Header Authorization
+        # 1. Cek Header Authorization
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({'error': 'Token otentikasi tidak ditemukan'}), 401
-        
-        token = auth_header.split(' ')[1]
-        
-        # 2. Verifikasi token ke Supabase Auth untuk mendapatkan data User
-        try:
-            user_response = supabase.auth.get_user(token)
-            if not user_response or not user_response.user:
-                return jsonify({'error': 'Sesi login tidak valid atau kadaluwarsa'}), 401
-            user_id = user_response.user.id
-        except Exception as auth_err:
-            # Mengembalikan status 401 agar frontend tahu sesi perlu di-refresh
-            return jsonify({'error': f'Auth Error: {str(auth_err)}'}), 401
-        
-        # 3. Ambil store_id milik user yang sedang login dari database
-        # (Sesuaikan nama tabel profil/user kamu di Supabase, misal 'profiles' atau 'users')
-        store_id = None
-        try:
-            # Ambil data profiles tanpa .single() agar tidak crash jika 0 rows
-            store_query = supabase.table('profiles').select('store_id').eq('id', user_id).execute()
-            if store_query.data and len(store_query.data) > 0:
-                store_id = store_query.data[0].get('store_id')
-        except Exception:
-            pass
 
-        # Fallback jika store_id kosong / tidak ada di tabel profiles
+        token = auth_header.split(' ')[1]
+
+        # 2. Decode user_id dari JWT Token
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get('sub')
+        except Exception as jwt_err:
+            return jsonify({'error': f'Gagal membaca token: {str(jwt_err)}'}), 401
+
+        # 3. Utamakan store_id dari Query Parameter jika ada (?store_id=xxx)
+        store_id = request.args.get('store_id')
+
+        # Jika tidak ada di query, cari di profiles
+        if not store_id and user_id:
+            try:
+                prof_query = supabase.table('profiles').select('store_id').eq('id', user_id).execute()
+                if prof_query.data and len(prof_query.data) > 0:
+                    store_id = prof_query.data[0].get('store_id')
+            except Exception:
+                pass
+
+        # Jika masih tidak ada, ambil ID toko utama dari tabel stores (a39ae6b7...)
         if not store_id:
-            store_id = user_id
-        
-        # 4. Jalankan prediksi khusus untuk store_id tersebut
+            try:
+                store_query = supabase.table('stores').select('id').limit(1).execute()
+                if store_query.data and len(store_query.data) > 0:
+                    store_id = store_query.data[0].get('id')
+            except Exception:
+                pass
+
+        # 4. Jalankan prediksi Clay Engine dengan store_id yang valid
         clay_result = get_clay_predictions(store_id=store_id)
-                
-        # Ambil list predictions dari dictionary clay_service
+        
         raw_predictions = clay_result.get("predictions", []) if isinstance(clay_result, dict) else []
 
         return jsonify({

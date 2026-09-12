@@ -1,8 +1,12 @@
 import os
-from dotenv import load_dotenv
 from supabase import create_client, Client
 
-load_dotenv()
+# Coba import dotenv jika ada (di lokal), abaikan jika di Vercel
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()

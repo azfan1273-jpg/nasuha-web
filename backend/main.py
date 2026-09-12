@@ -16,39 +16,36 @@ app.register_blueprint(clay_bp, url_prefix='/api/clay')
 
 # Endpoint Login untuk Frontend Web
 # Biarkan support dua-duanya (/login dan /api/login)
-        @app.route('/login', methods=['POST'])
-        @app.route('/api/login', methods=['POST'])
-        def login():
-            try:
-                data = request.get_json()
-                if not data:
-                    return jsonify({'error': 'Data JSON tidak ditemukan'}), 400
-                    
-                email = data.get('email')
-                password = data.get('password')
-        
-                if not email or not password:
-                    return jsonify({'error': 'Email dan password wajib diisi'}), 400
-        
-                res = supabase.auth.sign_in_with_password({
-                    "email": email,
-                    "password": password
-                })
-        
-                if res.user and res.session:
-                    return jsonify({
-                        'status': 'success',
-                        'access_token': res.session.access_token,
-                        'user': {
-                            'id': res.user.id,
-                            'email': res.user.email
-                        }
-                    }), 200
-                else:
-                    return jsonify({'error': 'Login gagal, periksa email dan password'}), 401
-        
-            except Exception as e:
-                return jsonify({'error': str(e)}), 500
+@app.route('/login', methods=['GET', 'POST'])
+@app.route('/api/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return jsonify({'message': 'Endpoint login aktif. Gunakan method POST untuk login.'}), 200
+
+    try:
+        data = request.get_json() or {}
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({'error': 'Email dan password wajib diisi'}), 400
+
+        res = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+
+        if res.user and res.session:
+            return jsonify({
+                'status': 'success',
+                'access_token': res.session.access_token,
+                'user': {'id': res.user.id, 'email': res.user.email}
+            }), 200
+        else:
+            return jsonify({'error': 'Email atau password salah'}), 401
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
                 
 # Route Frontend Web Static
 @app.route('/')

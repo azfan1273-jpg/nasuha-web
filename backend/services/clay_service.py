@@ -145,18 +145,54 @@ def calculate_tomorrow_prediction(orders):
 
 def get_clay_predictions(store_id):
     """
-    Fungsi wrapper yang dipanggil dari routes/clay_engine.py.
-    Mengambil data pesanan dari Supabase sesuai store_id lalu memproses prediksinya.
+    Fungsi wrapper dengan debug log lengkap untuk melacak data Supabase.
     """
     try:
+        print(f"[DEBUG CLAY] Mencari orders untuk store_id: {store_id}")
+        
+        # Coba ambil data orders tanpa relasi dulu untuk memastikan tabel orders tidak kosong
         response = (
+            supabase.table("orders")
+            .select("*")
+            .eq("store_id", store_id)
+            .execute()
+        )
+        
+        orders = response.data or []
+        print(f"[DEBUG CLAY] Jumlah baris orders ditemukan: {len(orders)}")
+        if len(orders) > 0:
+            print(f"[DEBUG CLAY] Sampel order pertama: {orders[0]}")
+
+        # Ambil data lengkap dengan order_items
+        response_full = (
             supabase.table("orders")
             .select("*, order_items(*)")
             .eq("store_id", store_id)
             .execute()
         )
-        orders = response.data or []
-        return calculate_tomorrow_prediction(orders)
+        full_orders = response_full.data or []
+        
+        return calculate_tomorrow_prediction(full_orders)
+        
+    except Exception as e:
+        print(f"[ERROR CLAY] Gagal ambil data orders: {str(e)}")
+        return {"top_services": [], "predictions": []}
+
+#def get_clay_predictions(store_id):
+#   """
+#    Fungsi wrapper yang dipanggil dari routes/clay_engine.py.
+#    Mengambil data pesanan dari Supabase sesuai store_id lalu memproses prediksinya.
+#    """
+#    try:
+ #       response = (
+ #           supabase.table("orders")
+ #           .select("*, order_items(*)")
+ #           .eq("store_id", store_id)
+ #           .execute()
+ #       )
+ #       orders = response.data or []
+ #       return calculate_tomorrow_prediction(orders)
+       
     except Exception as e:
         print(f"Error fetching orders for clay prediction: {str(e)}")
         return {"top_services": [], "predictions": []}

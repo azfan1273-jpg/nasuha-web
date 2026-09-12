@@ -15,11 +15,14 @@ def predict_tomorrow():
         token = auth_header.split(' ')[1]
         
         # 2. Verifikasi token ke Supabase Auth untuk mendapatkan data User
-        user_response = supabase.auth.get_user(token)
-        if not user_response or not user_response.user:
-            return jsonify({'error': 'Sesi login tidak valid atau kadaluwarsa'}), 401
-            
-        user_id = user_response.user.id
+        try:
+            user_response = supabase.auth.get_user(token)
+            if not user_response or not user_response.user:
+                return jsonify({'error': 'Sesi login tidak valid atau kadaluwarsa'}), 401
+            user_id = user_response.user.id
+        except Exception as auth_err:
+            # Mengembalikan status 401 agar frontend tahu sesi perlu di-refresh
+            return jsonify({'error': f'Auth Error: {str(auth_err)}'}), 401
         
         # 3. Ambil store_id milik user yang sedang login dari database
         # (Sesuaikan nama tabel profil/user kamu di Supabase, misal 'profiles' atau 'users')

@@ -26,43 +26,31 @@ app.register_blueprint(clay_bp, url_prefix='/api/clay')
 
 # Endpoint Login untuk Frontend Web
 # Biarkan support dua-duanya (/login dan /api/login)
-@app.route('/login', methods=['GET', 'POST'])
-@app.route('/api/login', methods=['GET', 'POST'])
-@app.route('/login/', methods=['GET', 'POST'])
-@app.route('/api/login/', methods=['GET', 'POST'])
+@app.route('/api/login', methods=['POST'])
 def login():
-    if request.method == 'GET':
-        return jsonify({'message': 'Endpoint login aktif'}), 200
-
     try:
         data = request.get_json() or {}
-        email = data.get('email')
-        password = data.get('password')
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
 
         if not email or not password:
             return jsonify({'error': 'Email dan password wajib diisi'}), 400
 
-        res = supabase.auth.sign_in_with_password({
+        # Memanggil auth Supabase
+        response = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
-
-        if res.user and res.session:
-            return jsonify({
-                'status': 'success',
-                'access_token': res.session.access_token,
-                'user': {'id': res.user.id, 'email': res.user.email}
-            }), 200
-        else:
-            return jsonify({'error': 'Email atau password salah / tidak terdaftar'}), 401
+        
+        return jsonify({
+            'message': 'Login berhasil',
+            'user': response.user.dict() if hasattr(response.user, 'dict') else str(response.user),
+            'session': response.session.dict() if hasattr(response.session, 'dict') else None
+        }), 200
 
     except Exception as e:
-        err_str = str(e).lower()
-        if 'invalid login credentials' in err_str or 'user_not_found' in err_str or '401' in err_str:
-            return jsonify({'error': 'Email atau password salah / tidak terdaftar'}), 401
-        
-        return jsonify({'error': f'Gagal login: {str(e)}'}), 400
-                
+        # Menangkap error 401 dari Supabase Auth
+        return jsonify({'error': str(e)}), 401                
 # Route Frontend Web Static
 @app.route('/')
 def serve_index():

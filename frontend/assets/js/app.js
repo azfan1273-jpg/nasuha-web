@@ -151,8 +151,22 @@ function setupAuthListeners() {
           return;
         }
 
+        // --- PERBAIKAN: Ambil token dari berbagai struktur respon backend/Supabase ---
+        const token = result.access_token || (result.session && result.session.access_token);
+
+        if (!token) {
+          if (errorMsg) {
+            errorMsg.innerText = "Login berhasil, namun token tidak ditemukan dari server.";
+            errorMsg.classList.remove("hidden");
+            errorMsg.style.display = 'block';
+          } else {
+            alert("Login berhasil, namun token tidak ditemukan dari server.");
+          }
+          return;
+        }
+
         // Simpan Session
-        localStorage.setItem("access_token", result.access_token);
+        localStorage.setItem("access_token", token);
         localStorage.setItem("user_info", JSON.stringify(result.user));
 
         if (loginModal) loginModal.classList.add("hidden");
@@ -387,7 +401,7 @@ async function loadClayEngineData() {
             <td style="padding: 12px; font-weight: bold; color: ${scoreColor};">${item.score}%</td>
             <td style="padding: 12px; color: #ccc;">${item.reason || '-'}</td>
             <td style="padding: 12px; font-weight: bold; color: #00E676;">Rp ${Number(item.est_spend || 0).toLocaleString('id-ID')}</td>
-            <td style="padding: 12px; color: #aaa;">${item.favorite_service || '-'}</td>
+            <td style="padding: 12px; color: #ccc;">${item.favorite_service || '-'}</td>
             <td style="padding: 12px; color: #28c8ff; font-weight: bold;">${item.total_tx} Order</td>
             <td style="padding: 12px; color: #ccc;">${item.contribution}</td>
             <td style="padding: 12px; text-align: center;">

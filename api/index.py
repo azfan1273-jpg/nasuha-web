@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Ambil absolute path folder root project & folder backend
+# Absolute path ke folder root dan backend
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 backend_dir = os.path.join(base_dir, 'backend')
 
@@ -10,5 +10,7 @@ if backend_dir not in sys.path:
 
 from main import app
 
-# Handler entrypoint Vercel
+# Set path folder static frontend agar kebaca Vercel
+app.static_folder = os.path.join(base_dir, 'frontend')
+
 app = app

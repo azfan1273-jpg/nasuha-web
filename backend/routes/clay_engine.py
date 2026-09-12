@@ -26,12 +26,18 @@ def predict_tomorrow():
         
         # 3. Ambil store_id milik user yang sedang login dari database
         # (Sesuaikan nama tabel profil/user kamu di Supabase, misal 'profiles' atau 'users')
-        store_query = supabase.table('profiles').select('store_id').eq('id', user_id).single().execute()
-        
-        if not store_query.data or not store_query.data.get('store_id'):
-            return jsonify({'error': 'Store ID tidak ditemukan untuk akun ini'}), 404
-            
-        store_id = store_query.data['store_id']
+        store_id = None
+        try:
+            # Ambil data profiles tanpa .single() agar tidak crash jika 0 rows
+            store_query = supabase.table('profiles').select('store_id').eq('id', user_id).execute()
+            if store_query.data and len(store_query.data) > 0:
+                store_id = store_query.data[0].get('store_id')
+        except Exception:
+            pass
+
+        # Fallback jika store_id kosong / tidak ada di tabel profiles
+        if not store_id:
+            store_id = user_id
         
         # 4. Jalankan prediksi khusus untuk store_id tersebut
         predictions = get_clay_predictions(store_id=store_id)

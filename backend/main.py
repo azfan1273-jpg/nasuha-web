@@ -10,6 +10,16 @@ frontend_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '../fr
 app = Flask(__name__, static_folder=frontend_folder, static_url_path='')
 CORS(app)
 
+@app.route('/api/check-env', methods=['GET'])
+def check_env():
+    url = os.environ.get('SUPABASE_URL', 'KOSONG / TIDAK TERBACA')
+    key = os.environ.get('SUPABASE_KEY', 'KOSONG / TIDAK TERBACA')
+    return jsonify({
+        'supabase_url_vercel': url,
+        'supabase_key_length': len(key),
+        'supabase_key_preview': key[:10] + '...' if key else 'KOSONG'
+    }), 200
+
 # Register Blueprints
 app.register_blueprint(analytics_bp, url_prefix='/api')
 app.register_blueprint(clay_bp, url_prefix='/api/clay')

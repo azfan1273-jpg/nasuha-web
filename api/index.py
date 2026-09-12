@@ -1,13 +1,7 @@
 import sys
 import os
 
-# Set jalur direktori root & backend
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKEND_DIR = os.path.join(ROOT_DIR, 'backend')
-
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, BACKEND_DIR)
+# Tambahkan direktori backend ke sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../backend'))
 
 from main import app

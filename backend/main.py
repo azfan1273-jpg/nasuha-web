@@ -18,9 +18,11 @@ app.register_blueprint(clay_bp, url_prefix='/api/clay')
 # Biarkan support dua-duanya (/login dan /api/login)
 @app.route('/login', methods=['GET', 'POST'])
 @app.route('/api/login', methods=['GET', 'POST'])
+@app.route('/login/', methods=['GET', 'POST'])
+@app.route('/api/login/', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return jsonify({'message': 'Endpoint login aktif. Gunakan method POST untuk login.'}), 200
+        return jsonify({'message': 'Endpoint login aktif'}), 200
 
     try:
         data = request.get_json() or {}

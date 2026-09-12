@@ -1,10 +1,14 @@
-import sys
 import os
+import sys
 
-# Tambahkan path folder backend ke sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../backend'))
+# Ambil absolute path folder root project & folder backend
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+backend_dir = os.path.join(base_dir, 'backend')
+
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 from main import app
 
-# Handler entrypoint untuk Vercel Serverless Function
+# Handler entrypoint Vercel
 app = app

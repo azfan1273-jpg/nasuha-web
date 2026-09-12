@@ -8,44 +8,35 @@ clay_bp = Blueprint('clay', __name__)
 @clay_bp.route('/predict-tomorrow', methods=['GET'])
 def predict_tomorrow():
     try:
-        # 1. Cek Header Authorization
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({'error': 'Token otentikasi tidak ditemukan'}), 401
 
         token = auth_header.split(' ')[1]
 
-        # 2. Decode user_id dari JWT Token
+        # Decode UID dari JWT Token
         try:
             payload = jwt.decode(token, options={"verify_signature": False})
             user_id = payload.get('sub')
         except Exception as jwt_err:
             return jsonify({'error': f'Gagal membaca token: {str(jwt_err)}'}), 401
 
-        # 3. Utamakan store_id dari Query Parameter jika ada (?store_id=xxx)
+        # Cek store_id dari Query Parameter atau cari ke tabel profiles via UID
         store_id = request.args.get('store_id')
 
-        # Jika tidak ada di query, cari di profiles
         if not store_id and user_id:
             try:
                 prof_query = supabase.table('profiles').select('store_id').eq('id', user_id).execute()
                 if prof_query.data and len(prof_query.data) > 0:
                     store_id = prof_query.data[0].get('store_id')
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error fetching profile: {e}")
 
-        # Jika masih tidak ada, ambil ID toko utama dari tabel stores (a39ae6b7...)
         if not store_id:
-            try:
-                store_query = supabase.table('stores').select('id').limit(1).execute()
-                if store_query.data and len(store_query.data) > 0:
-                    store_id = store_query.data[0].get('id')
-            except Exception:
-                pass
+            return jsonify({'error': 'store_id tidak ditemukan untuk akun ini di tabel profiles'}), 404
 
-        # 4. Jalankan prediksi Clay Engine dengan store_id yang valid
+        # Jalankan kalkulasi Clay Engine berdasarkan store_id toko Nasuha
         clay_result = get_clay_predictions(store_id=store_id)
-        
         raw_predictions = clay_result.get("predictions", []) if isinstance(clay_result, dict) else []
 
         return jsonify({

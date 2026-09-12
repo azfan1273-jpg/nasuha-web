@@ -17,10 +17,7 @@ def login():
 
         headers = get_supabase_headers()
         url = f"{SUPABASE_URL}/auth/v1/token?grant_type=password"
-        payload = {
-            "email": email,
-            "password": password
-        }
+        payload = {"email": email, "password": password}
 
         res = requests.post(url, json=payload, headers=headers)
         res_data = res.json()
@@ -28,34 +25,21 @@ def login():
         if res.status_code != 200:
             return jsonify({"status": "error", "message": res_data.get("error_description", "Login gagal")}), res.status_code
 
-        # --- AMBIL STORE_ID MILIK USER ---
         user_info = res_data.get("user", {})
         user_id = user_info.get("id")
         store_id = None
 
+        # AMBIL STORE_ID DARI TABEL PROFILES BERDASARKAN UID (PERSIS SEPERTI FLUTTER)
         if user_id:
             try:
-                # 1. Cek ke tabel profiles
                 prof_res = requests.get(
                     f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user_id}&select=store_id",
                     headers=headers
                 )
                 if prof_res.status_code == 200 and len(prof_res.json()) > 0:
                     store_id = prof_res.json()[0].get("store_id")
-            except Exception:
-                pass
-
-        # 2. Fallback jika profiles kosong, ambil ID toko dari tabel stores
-        if not store_id:
-            try:
-                store_res = requests.get(
-                    f"{SUPABASE_URL}/rest/v1/stores?select=id&limit=1",
-                    headers=headers
-                )
-                if store_res.status_code == 200 and len(store_res.json()) > 0:
-                    store_id = store_res.json()[0].get("id")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error fetch profile store_id: {e}")
 
         return jsonify({
             "status": "success",
@@ -66,7 +50,7 @@ def login():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
+        
 # 2. API Get Table Orders Database
 @analytics_bp.route('/transactions', methods=['GET'])
 def get_transactions():

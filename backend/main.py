@@ -36,21 +36,34 @@ def login():
         if not email or not password:
             return jsonify({'error': 'Email dan password wajib diisi'}), 400
 
-        # Memanggil auth Supabase
+        # Memanggil Auth Supabase
         response = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
         
+        # Ekstrak data user & session
+        user_data = response.user.dict() if hasattr(response.user, 'dict') else response.user
+        session_data = response.session.dict() if hasattr(response.session, 'dict') else response.session
+        token = response.session.access_token if response.session else None
+
         return jsonify({
             'message': 'Login berhasil',
-            'user': response.user.dict() if hasattr(response.user, 'dict') else str(response.user),
-            'session': response.session.dict() if hasattr(response.session, 'dict') else None
+            'user': user_data,
+            'session': session_data,
+            'access_token': token
         }), 200
 
     except Exception as e:
-        # Menangkap error 401 dari Supabase Auth
-        return jsonify({'error': str(e)}), 401                
+        # Ambil detail pesan error asli dari Exception Supabase
+        error_detail = str(e)
+        if hasattr(e, 'message'):
+            error_detail = e.message
+        elif hasattr(e, 'args') and len(e.args) > 0:
+            error_detail = str(e.args[0])
+
+        print(f"[LOGIN ERROR] Email: {email} | Exception: {error_detail}")
+        return jsonify({'error': f"Supabase Auth Error: {error_detail}"}), 401                
 
 # Route Frontend Web Static (Handling Static & SPA Fallback)
 @app.route('/', defaults={'path': ''})

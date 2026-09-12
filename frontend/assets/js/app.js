@@ -370,7 +370,7 @@ async function loadClayEngineData() {
       throw new Error(errMsg);
     }
 
-    const predictions = result.predictions || [];
+    const predictions = Array.isArray(result.predictions) ? result.predictions : [];
 
     if (predictions.length === 0) {
       if (totalPotensialEl) totalPotensialEl.innerText = "0 Pelanggan";

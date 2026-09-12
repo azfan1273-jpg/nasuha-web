@@ -17,37 +17,43 @@ app.register_blueprint(clay_bp, url_prefix='/api/clay')
 # Endpoint Login untuk Frontend Web
 # Biarkan support dua-duanya (/login dan /api/login)
 @app.route('/login', methods=['GET', 'POST'])
-@app.route('/api/login', methods=['GET', 'POST'])
-@app.route('/login/', methods=['GET', 'POST'])
-@app.route('/api/login/', methods=['GET', 'POST'])
-def login():
-    if request.method == 'GET':
-        return jsonify({'message': 'Endpoint login aktif'}), 200
-
-    try:
-        data = request.get_json() or {}
-        email = data.get('email')
-        password = data.get('password')
-
-        if not email or not password:
-            return jsonify({'error': 'Email dan password wajib diisi'}), 400
-
-        res = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-
-        if res.user and res.session:
-            return jsonify({
-                'status': 'success',
-                'access_token': res.session.access_token,
-                'user': {'id': res.user.id, 'email': res.user.email}
-            }), 200
-        else:
-            return jsonify({'error': 'Email atau password salah'}), 401
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        @app.route('/api/login', methods=['GET', 'POST'])
+        @app.route('/login/', methods=['GET', 'POST'])
+        @app.route('/api/login/', methods=['GET', 'POST'])
+        def login():
+            if request.method == 'GET':
+                return jsonify({'message': 'Endpoint login aktif'}), 200
+        
+            try:
+                data = request.get_json() or {}
+                email = data.get('email')
+                password = data.get('password')
+        
+                if not email or not password:
+                    return jsonify({'error': 'Email dan password wajib diisi'}), 400
+        
+                # Eksekusi Auth ke Supabase
+                res = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+        
+                if res.user and res.session:
+                    return jsonify({
+                        'status': 'success',
+                        'access_token': res.session.access_token,
+                        'user': {'id': res.user.id, 'email': res.user.email}
+                    }), 200
+                else:
+                    return jsonify({'error': 'Email atau password salah / tidak terdaftar'}), 401
+        
+            except Exception as e:
+                err_str = str(e).lower()
+                # Jika Supabase mengembalikan Invalid credentials atau user not found
+                if 'invalid login credentials' in err_str or 'user_not_found' in err_str or '401' in err_str:
+                    return jsonify({'error': 'Email atau password salah / tidak terdaftar'}), 401
+                
+                return jsonify({'error': f'Gagal login: {str(e)}'}), 400
                 
 # Route Frontend Web Static
 @app.route('/')

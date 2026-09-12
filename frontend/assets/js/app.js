@@ -139,8 +139,10 @@ function setupAuthListeners() {
 
         const result = await res.json();
 
-        if (!res.ok || result.status === "error") {
-          throw new Error(result.message || "Login gagal");
+        if (!res.ok) {
+            // Tampilkan pesan error custom dari JSON backend
+            showLoginError(data.error || 'Email atau password salah / tidak terdaftar');
+            return;
         }
 
         // Simpan Session

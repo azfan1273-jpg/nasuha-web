@@ -40,12 +40,16 @@ def predict_tomorrow():
             store_id = user_id
         
         # 4. Jalankan prediksi khusus untuk store_id tersebut
-        predictions = get_clay_predictions(store_id=store_id)
-        
+        clay_result = get_clay_predictions(store_id=store_id)
+                
+        # Ambil list predictions dari dictionary clay_service
+        raw_predictions = clay_result.get("predictions", []) if isinstance(clay_result, dict) else []
+
         return jsonify({
             'status': 'success',
             'store_id': store_id,
-            'predictions': predictions
+            'predictions': raw_predictions,
+            'top_services': clay_result.get("top_services", []) if isinstance(clay_result, dict) else []
         }), 200
 
     except Exception as e:

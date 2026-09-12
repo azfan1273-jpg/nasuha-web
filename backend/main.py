@@ -25,10 +25,10 @@ def login():
         email = data.get('email')
         password = data.get('password')
 
-        # Cek apakah variabel supabase terinisialisasi
-        if not supabase:
-            return jsonify({'error': 'Supabase client gagal terkoneksi di Serverless Vercel'}), 500
+        if not email or not password:
+            return jsonify({'error': 'Email dan password wajib diisi'}), 400
 
+        # Verifikasi kredensial pengguna ke Supabase Auth
         res = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
@@ -38,15 +38,18 @@ def login():
             return jsonify({
                 'status': 'success',
                 'access_token': res.session.access_token,
-                'user': {'id': res.user.id, 'email': res.user.email}
+                'user': {
+                    'id': res.user.id,
+                    'email': res.user.email
+                }
             }), 200
         else:
-            return jsonify({'error': 'Email atau password salah'}), 401
+            return jsonify({'error': 'Login gagal, periksa email dan password'}), 401
 
     except Exception as e:
-        # Mengembalikan pesan error asli dalam format JSON
-        return jsonify({'error': f'Backend Exception: {str(e)}'}), 500
-        
+        # 💥 Cetak error asli yang dikembalikan oleh Supabase Client
+        return jsonify({'error': f'Supabase Auth Error: {str(e)}'}), 400
+                
 # Route Frontend Web Static
 @app.route('/')
 def serve_index():

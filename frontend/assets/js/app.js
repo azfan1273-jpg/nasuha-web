@@ -102,6 +102,9 @@ function setupAuthListeners() {
           localStorage.removeItem("store_id");
           localStorage.removeItem("user_info");
 
+          // 2. Refresh halaman secara otomatis (tetap berada di URL/menu yang sama)
+          window.location.reload();
+
           // Re-render UI & Muat Ulang Data
           renderAuthState();
           loadDatabaseRealData();
@@ -414,7 +417,7 @@ async function loadClayEngineData() {
             <td style="padding: 12px; color: #ccc;">${item.reason || '-'}</td>
             <td style="padding: 12px; font-weight: bold; color: #00E676;">Rp ${Number(item.est_spend || 0).toLocaleString('id-ID')}</td>
             <td style="padding: 12px; color: #ccc;">${item.favorite_service || '-'}</td>
-            <td style="padding: 12px; color: #28c8ff; font-weight: bold;">${item.total_tx} Order</td>
+            <td style="padding: 12px; color: #28c8ff; font-weight: bold;">${item.transaction_count || item.total_tx || 0} Order</td>
             <td style="padding: 12px; color: #ccc;">${item.contribution}</td>
             <td style="padding: 12px; text-align: center;">
               <button onclick="sendWhatsAppReminder('${item.phone || ''}', '${item.name || ''}')" 

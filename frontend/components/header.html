@@ -1,17 +1,27 @@
-<header class="top-header">
-  <h1 class="page-title" id="current-page-title">Overview</h1>
+<div class="top-header">
+  <!-- SISI KIRI: Judul Halaman (Database, Clay Engine, dll) -->
+  <div class="header-left">
+    <h2 id="current-page-title" class="page-title">Database</h2>
+  </div>
 
-  <div class="header-actions">
-    <button class="action-btn" id="btn-message" title="Pesan">📩</button>
-    <button class="action-btn" id="btn-notify" title="Notifikasi">🔔</button>
+  <!-- SISI KANAN: Icon Pesan -> Lonceng -> Keranjang (dengan Login/Register di BAWAH keranjang) -->
+  <div class="header-right">
+    <!-- Icon Pesan -->
+    <button class="action-btn" title="Pesan">📩</button>
+    
+    <!-- Icon Lonceng -->
+    <button class="action-btn" title="Notifikasi">🔔</button>
 
-    <!-- Area User Profile Dinamis -->
+    <!-- Icon Keranjang + Teks Login/Register persis di BAWAHNYA -->
     <div class="user-profile" id="user-profile-btn">
-      <span class="user-icon" id="header-user-icon">🧺</span>
-      <div class="user-text-group" id="header-user-text">
+      <div class="user-icon-wrapper">
+        <span class="user-icon">🧺</span>
+      </div>
+      <div id="header-user-text" class="user-text-group">
         <span class="text-login">Login</span>
+        <span class="text-separator">/</span>
         <span class="text-register">Register</span>
       </div>
     </div>
   </div>
-</header>
+</div>

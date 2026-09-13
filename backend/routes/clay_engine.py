@@ -1,51 +1,58 @@
-from flask import Blueprint, jsonify, request
-from services.clay_service import get_clay_predictions
-from config.supabase_config import supabase
+import requests
 import jwt
+from flask import Blueprint, jsonify, request
+from config.supabase_config import SUPABASE_URL, SUPABASE_KEY, get_supabase_headers
+from services.clay_service import calculate_tomorrow_prediction
 
 clay_bp = Blueprint('clay', __name__)
 
 @clay_bp.route('/predict-tomorrow', methods=['GET'])
 def predict_tomorrow():
     try:
-        # 1. Cek Header Authorization
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'Token otentikasi tidak ditemukan'}), 401
+            return jsonify({'status': 'error', 'message': 'Token otentikasi tidak ditemukan'}), 401
 
         token = auth_header.split(' ')[1]
+        user_headers = get_supabase_headers(auth_header)
 
-        # 2. Decode UID (sub) dari token JWT
-        user_id = None
-        try:
-            payload = jwt.decode(token, options={"verify_signature": False})
-            user_id = payload.get('sub') or payload.get('id')
-        except Exception as jwt_err:
-            return jsonify({'error': f'Gagal membaca token JWT: {str(jwt_err)}'}), 401
-
-        if not user_id:
-            return jsonify({'error': 'User ID tidak valid dalam token'}), 401
-
-        # 3. Cari store_id dari tabel profiles KHUSUS milik UID ini
+        # 1. Ambil store_id dari Query String (jika dikirim frontend)
         store_id = request.args.get('store_id')
 
-        if not store_id:
+        # 2. Jika store_id kosong, fetch via REST API dari profiles
+        if not store_id or store_id in ['null', 'undefined', 'None', '']:
             try:
-                prof_query = supabase.table('profiles').select('store_id').eq('id', user_id).execute()
-                if prof_query.data and len(prof_query.data) > 0:
-                    store_id = prof_query.data[0].get('store_id')
-            except Exception as e:
-                print(f"[CLAY DEBUG] Error fetch profile: {e}")
+                payload = jwt.decode(token, options={"verify_signature": False})
+                user_id = payload.get('sub') or payload.get('id')
+                
+                if user_id:
+                    prof_res = requests.get(
+                        f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user_id}&select=store_id",
+                        headers=user_headers
+                    )
+                    if prof_res.status_code == 200 and len(prof_res.json()) > 0:
+                        store_id = prof_res.json()[0].get('store_id')
+            except Exception as err:
+                print(f"[CLAY DEBUG] JWT decode / profile error: {err}")
 
-        # 4. Jika akun ini memang tidak punya store_id, TOLAK request-nya (Jangan bocorkan toko lain!)
-        if not store_id:
+        # 3. Validasi store_id
+        if not store_id or store_id in ['null', 'undefined', 'None', '']:
             return jsonify({
                 'status': 'error',
-                'message': 'Akun Anda belum terhubung ke toko mana pun'
+                'message': 'Gagal mengidentifikasi store_id toko. Silakan login ulang.'
             }), 400
 
-        # 5. Jalankan kalkulasi Clay Engine KHUSUS toko user ini
-        clay_result = get_clay_predictions(store_id=store_id)
+        # 4. Ambil data orders + order_items KHUSUS store_id ini via REST API
+        orders_url = f"{SUPABASE_URL}/rest/v1/orders?select=*,order_items(*)&store_id=eq.{store_id}"
+        orders_res = requests.get(orders_url, headers=user_headers)
+
+        if orders_res.status_code != 200:
+            return jsonify({'status': 'error', 'message': f'Gagal mengambil data orders: {orders_res.text}'}), orders_res.status_code
+
+        orders_data = orders_res.json() or []
+
+        # 5. Jalankan kalkulasi Clay Engine Python
+        clay_result = calculate_tomorrow_prediction(orders_data)
         raw_predictions = clay_result.get("predictions", []) if isinstance(clay_result, dict) else []
 
         return jsonify({
@@ -56,4 +63,4 @@ def predict_tomorrow():
         }), 200
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'status': 'error', 'message': str(e)}), 500

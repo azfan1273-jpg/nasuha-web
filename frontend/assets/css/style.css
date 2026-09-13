@@ -15,7 +15,10 @@ html, body {
   max-height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: #2b2b2b;
+  /* Menggunakan gambar lokal sakura-night.jpg */
+  background: linear-gradient(rgba(10, 10, 12, 0.55), rgba(10, 10, 12, 0.55)),
+              url('../images/sakura-night.jpg') no-repeat center center fixed;
+  background-size: cover;
   color: #ffffff;
 }
 
@@ -42,9 +45,10 @@ html, body {
   max-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #3a3a3a 0%, #202020 100%);
-  border-right: 1px solid #444444;
-  overflow: hidden; /* Mengunci total frame luar sidebar */
+  background: rgba(15, 15, 18, 0.45); /* Dibuat transparan halus */
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
 
 /* Brand Header */
@@ -52,11 +56,21 @@ html, body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 16px 14px;
+  padding: 0 14px;
+  height: 52px;
   gap: 12px;
-  background-color: #1a1a1a;
-  border-bottom: 1px solid #333333;
-  flex-shrink: 0; /* Dilarang ciut */
+  background: rgba(10, 10, 12, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.nav-bottom {
+  margin-top: auto;
+  flex-shrink: 0;
+  list-style: none;
+  padding-bottom: 15px;
+  background: rgba(10, 10, 12, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .brand-logo-wrapper {
@@ -133,27 +147,32 @@ html, body {
   overflow: hidden;
 }
 
-/* Top Header Kanan */
+/* Container Top Header (Kiri & Kanan Dipisah) */
 .top-header {
-  background-color: #222222;
-  padding: 12px 24px;
+  background: rgba(15, 15, 18, 0.5);
+  backdrop-filter: blur(10px);
+  padding: 0 24px;
+  height: 52px;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; /* Menjaga Judul di Kiri & Icon di Kanan */
   align-items: center;
-  border-bottom: 1px solid #333333;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
-.page-title {
-  font-size: 1.1rem;
+/* Judul Halaman di Sisi Kiri */
+.header-left .page-title {
+  font-size: 1.05rem;
   font-weight: 600;
-  font-style: italic;
+  color: #ffffff;
+  margin: 0;
 }
 
-.header-actions {
+/* Group Elemen Sisi Kanan */
+.header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .action-btn {
@@ -161,63 +180,72 @@ html, body {
   border: none;
   color: #ffffff;
   cursor: pointer;
-  font-size: 1.8rem;
+  font-size: 1.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* Box User Profile (Keranjang + Teks di Bawahnya) */
 .user-profile {
   display: flex;
-  flex-direction: row;
+  flex-direction: column; /* Ubah ke column agar teks tepat di BAWAH keranjang */
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   cursor: pointer;
-  user-select: none;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 6px;
   transition: background-color 0.2s;
 }
 
-/* Efek saat kursor diarahkan ke profil/login */
 .user-profile:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .user-icon {
-  font-size: 1.8rem;
+  font-size: 1.2rem;
   line-height: 1;
-  display: flex;
-  align-items: center;
-  pointer-events: none;
 }
 
+/* Teks Login / Register Horizontal di Bawah Keranjang */
 .user-text-group {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 17px;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
 }
 
 .text-login {
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: #28c8ff;
   line-height: 1;
-  pointer-events: none;
+}
+
+.text-separator {
+  font-size: 0.65rem;
+  color: #666666;
+  line-height: 1;
 }
 
 .text-register {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #aaaaaa;
   line-height: 1;
-  pointer-events: none;
 }
 
 .content-area {
   flex: 1;
   padding: 24px;
-  background-color: #333333;
+  background: rgba(0, 0, 0, 0.35); /* Transparan agar gambar sakura melintasi seluruh layar */
+  backdrop-filter: blur(3px);
   overflow-y: auto;
 }
 
@@ -571,4 +599,75 @@ html, body {
 #btn-login, #nav-login-btn, .user-profile {
   cursor: pointer;
   user-select: none;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN (MOBILE & TABLET)
+   ========================================== */
+
+/* 1. Pengaturan Container & Layout Utama */
+.app-container {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* 2. Responsif Potrait (Layar HP Tegak < 768px) */
+@media screen and (max-width: 768px) {
+  .app-container {
+    flex-direction: column; /* Ubah layout dari samping ke atas-bawah */
+  }
+
+  /* Sidebar Menyusut di Atas atau Mengikuti Scroll */
+  .sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    padding: 10px 15px !important;
+  }
+
+  /* Buat menu sidebar scroll horizontal di HP */
+  .sidebar nav ul, .sidebar .nav-list {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    gap: 8px !important;
+    padding-bottom: 5px !important;
+  }
+
+  .sidebar .nav-item {
+    margin-bottom: 0 !important;
+    flex: 0 0 auto;
+  }
+
+  /* Area Konten Utama */
+  .main-content, #content-area {
+    width: 100% !important;
+    padding: 12px !important;
+    overflow-x: auto; /* Izinkan scroll tabel jika terlalu lebar */
+  }
+
+  /* Pembungkus Tabel Agar Bisa Di-scroll Kanan-Kiri di HP */
+  .table-responsive, table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 3. Responsif Landscape (Layar HP Miring / Tablet 769px - 1024px) */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 200px !important; /* Perkecil lebar sidebar di landscape HP */
+  }
+  
+  .main-content {
+    flex: 1;
+    overflow-x: auto;
+  }
 }

@@ -602,19 +602,27 @@ html, body {
 }
 
 /* ==========================================
-   RESPONSIVE DESIGN (MOBILE & TABLET FIX)
+   PERBAIKAN TAMPILAN RESPONSIVE MOBILE (HP)
    ========================================== */
 
 @media screen and (max-width: 768px) {
-  /* 1. Layout Ubah dari Samping ke Atas-Bawah */
-  .app-layout {
-    flex-direction: column !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow: hidden !important;
+  /* 1. Izinkan Layar HP Menyesuaikan Tinggi Konten */
+  html, body {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow-y: auto !important;
   }
 
-  /* 2. Sidebar Ringkas Scroll Horizontal di Atas */
+  .app-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* 2. Menu Sidebar Atas (Horisontal) */
   .sidebar {
     width: 100% !important;
     min-width: 100% !important;
@@ -622,14 +630,16 @@ html, body {
     max-height: none !important;
     border-right: none !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 100;
   }
 
-  /* Sembunyikan Brand Header & Bottom Nav di HP biar irit ruang */
+  /* Sembunyikan Brand Header & Bottom Nav di HP biar irit tempat */
   .brand-header, .nav-bottom {
     display: none !important;
   }
 
-  /* Menu Navigasi Samping Jadi Menu Bar Horizontal */
   .nav-top {
     display: flex !important;
     flex-direction: row !important;
@@ -650,16 +660,21 @@ html, body {
     background: rgba(40, 200, 255, 0.25) !important;
   }
 
-  /* 3. Main Area & Content Responsif */
+  /* 3. Main Area & Top Header (Tetap Tampil Presisi) */
   .main-wrapper {
     width: 100% !important;
     flex: 1 !important;
-    overflow: hidden !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .top-header {
+    display: flex !important;
     padding: 0 12px !important;
-    height: 46px !important;
+    height: 48px !important;
+    background: rgba(15, 15, 18, 0.7) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 
   .header-left .page-title {
@@ -670,9 +685,10 @@ html, body {
     gap: 10px !important;
   }
 
+  /* 4. Area Konten Utama */
   .content-area {
     padding: 12px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 }

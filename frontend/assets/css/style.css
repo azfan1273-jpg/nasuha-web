@@ -602,72 +602,77 @@ html, body {
 }
 
 /* ==========================================
-   RESPONSIVE DESIGN (MOBILE & TABLET)
+   RESPONSIVE DESIGN (MOBILE & TABLET FIX)
    ========================================== */
 
-/* 1. Pengaturan Container & Layout Utama */
-.app-container {
-  display: flex;
-  flex-direction: row;
-  min-height: 100vh;
-  width: 100%;
-  overflow-x: hidden;
-}
-
-/* 2. Responsif Potrait (Layar HP Tegak < 768px) */
 @media screen and (max-width: 768px) {
-  .app-container {
-    flex-direction: column; /* Ubah layout dari samping ke atas-bawah */
+  /* 1. Layout Ubah dari Samping ke Atas-Bawah */
+  .app-layout {
+    flex-direction: column !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
   }
 
-  /* Sidebar Menyusut di Atas atau Mengikuti Scroll */
+  /* 2. Sidebar Ringkas Scroll Horizontal di Atas */
   .sidebar {
     width: 100% !important;
     min-width: 100% !important;
     height: auto !important;
-    position: relative !important;
-    padding: 10px 15px !important;
+    max-height: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
   }
 
-  /* Buat menu sidebar scroll horizontal di HP */
-  .sidebar nav ul, .sidebar .nav-list {
+  /* Sembunyikan Brand Header & Bottom Nav di HP biar irit ruang */
+  .brand-header, .nav-bottom {
+    display: none !important;
+  }
+
+  /* Menu Navigasi Samping Jadi Menu Bar Horizontal */
+  .nav-top {
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important;
     white-space: nowrap !important;
-    gap: 8px !important;
-    padding-bottom: 5px !important;
+    padding: 6px 10px !important;
+    gap: 6px !important;
   }
 
-  .sidebar .nav-item {
-    margin-bottom: 0 !important;
-    flex: 0 0 auto;
+  .nav-item a {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+    border-radius: 6px;
   }
 
-  /* Area Konten Utama */
-  .main-content, #content-area {
+  .nav-item.active a {
+    border-left: none !important;
+    background: rgba(40, 200, 255, 0.25) !important;
+  }
+
+  /* 3. Main Area & Content Responsif */
+  .main-wrapper {
     width: 100% !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+  }
+
+  .top-header {
+    padding: 0 12px !important;
+    height: 46px !important;
+  }
+
+  .header-left .page-title {
+    font-size: 0.9rem !important;
+  }
+
+  .header-right {
+    gap: 10px !important;
+  }
+
+  .content-area {
     padding: 12px !important;
-    overflow-x: auto; /* Izinkan scroll tabel jika terlalu lebar */
-  }
-
-  /* Pembungkus Tabel Agar Bisa Di-scroll Kanan-Kiri di HP */
-  .table-responsive, table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
-/* 3. Responsif Landscape (Layar HP Miring / Tablet 769px - 1024px) */
-@media screen and (min-width: 769px) and (max-width: 1024px) {
-  .sidebar {
-    width: 200px !important; /* Perkecil lebar sidebar di landscape HP */
-  }
-  
-  .main-content {
-    flex: 1;
-    overflow-x: auto;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 }

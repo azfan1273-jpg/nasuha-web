@@ -600,247 +600,149 @@ def calculate_tomorrow_prediction(orders):
             "date": created_at,
         })
 
+    # ----------------------------------------------------
+    # Prediction Status (HARI INI vs BESOK vs TERLEWAT)
+    # ----------------------------------------------------
+    today = now_utc.date()
+    
+    if predicted_return_date == today:
+        prediction_status = "Hari Ini"
+        status_badge = "Hari Ini"
+    elif delta_to_tomorrow == 0:
+        prediction_status = "Besok"
+        status_badge = "Besok"
+    elif delta_to_tomorrow < 0:
+        prediction_status = "Sudah lewat"
+        status_badge = "Terlewat"
+    elif delta_to_tomorrow <= 3:
+        prediction_status = "Segera"
+        status_badge = "Segera"
+    else:
+        prediction_status = "Belum"
+        status_badge = "Belum"
+
+    # ----------------------------------------------------
+    # Reason Teks Dinamis
+    # ----------------------------------------------------
+    if prediction_status == "Hari Ini":
+        reason = f"Estimasi siklus {typical_cycle} harian jatuh HARI INI."
+    elif prediction_status == "Besok":
+        reason = f"Estimasi siklus {typical_cycle} harian jatuh BESOK."
+    elif prediction_status == "Sudah lewat":
+        days_over = abs((today - predicted_return_date).days)
+        reason = f"Terlewat {days_over} hari dari siklus {typical_cycle} hari."
+    elif prediction_status == "Segera":
+        reason = f"Estimasi kembali {predicted_return_date.isoformat()}."
+    else:
+        reason = f"Estimasi kembali {predicted_return_date.isoformat()}."
+
+    confidence_level = _get_confidence_level(
+        transaction_count=total_tx,
+        cycle_deviation=cycle_deviation,
+    )
+
+    predictions.append({
+        "customer_id": last_transaction.get("customer_id"),
+        "name": last_transaction["name"],
+        "phone": last_transaction["phone"],
+        "tag": tag,
+        "status": status_badge,  # 🟢 KOLOM STATUS BARU (Hari Ini / Besok / Terlewat / Segera / Belum)
+        "score": score,
+        "reason": reason,
+        "prediction_status": prediction_status,
+        "prediction_date": predicted_return_date.isoformat(),
+        "last_transaction": last_tx_date.isoformat(),
+        "days_since_last": round(days_since_last, 1),
+        "cycle_days": typical_cycle,
+        "cycle_deviation": round(cycle_deviation, 2),
+        "transaction_count": total_tx,
+        "total_spend": round(total_spend),
+        "est_spend": avg_spend,
+        "favorite_service": favorite_service,
+        "contribution_percent": contribution_pct,
+        "contribution": f"{contribution_pct}%",
+        "confidence_level": confidence_level,
+    })
+
     # ========================================================
-    # 4. CUSTOMER PREDICTION
+    # 5. TOP PREDICTIONS (PENGELOMPOKAN HARI INI & BESOK)
     # ========================================================
+    
+    # 🟢 Prediksi Pelanggan HARI INI (Score >= 60)
+    today_predictions = [
+        prediction for prediction in predictions
+        if prediction["status"] == "Hari Ini" and prediction["score"] >= 60
+    ]
+    today_predictions.sort(
+        key=lambda x: (x["score"], x["transaction_count"], x["total_spend"]),
+        reverse=True
+    )
 
-    predictions = []
+    # 🟢 Prediksi Pelanggan BESOK (Score >= 60)
+    tomorrow_predictions = [
+        prediction for prediction in predictions
+        if prediction["status"] == "Besok" and prediction["score"] >= 60
+    ]
+    tomorrow_predictions.sort(
+        key=lambda x: (x["score"], x["transaction_count"], x["total_spend"]),
+        reverse=True
+    )
 
-    for customer_key, tx_list in customer_map.items():
+    # Fallback/Top gabungan untuk kompatibilitas lama (Limit 5)
+    top_predictions = (today_predictions + tomorrow_predictions)[:TOP_PREDICTIONS_LIMIT]
 
-        if len(tx_list) < MIN_TRANSACTIONS_FOR_PREDICTION:
-            continue
+    # ========================================================
+    # 6. RESULT
+    # ========================================================
+    return {
+        "top_services": top_services_summary,
+        "today_predictions": today_predictions,       # 🟢 ARRAY KHUSUS HARI INI
+        "tomorrow_predictions": tomorrow_predictions, # 🟢 ARRAY KHUSUS BESOK
+        "predictions": predictions,                   # Semua data hasil analisa
+        "metadata": {
+            "total_orders": len(orders),
+            "total_customers": len(customer_map),
+            "customers_analyzed": len(predictions),
+            "today_count": len(today_predictions),
+            "tomorrow_count": len(tomorrow_predictions),
+            "prediction_date": today.isoformat(),
+            "algorithm": "median-cycle-v4-today-tomorrow",
+        },
+    }
 
-        tx_list.sort(
-            key=lambda x: x["date"],
-            reverse=True,
-        )
 
-        last_transaction = tx_list[0]
-        last_tx_date = last_transaction["date"]
+    # ============================================================
+    # SUPABASE WRAPPER
+    # ============================================================
 
-        days_since_last = max(
-            0.0,
-            (
-                now_utc - last_tx_date
-            ).total_seconds() / 86400,
-        )
-
-        total_tx = len(tx_list)
-
-        # ----------------------------------------------------
-        # Cycle
-        # ----------------------------------------------------
-
-        typical_cycle, intervals, cycle_deviation = (
-            _calculate_cycle_days(tx_list)
-        )
-
-        predicted_return_datetime = (
-            last_tx_date
-            + timedelta(days=typical_cycle)
-        )
-
-        predicted_return_date = (
-            predicted_return_datetime.date()
-        )
-
-        delta_to_tomorrow = (
-            predicted_return_date - tomorrow
-        ).days
-
-        # ----------------------------------------------------
-        # Spend
-        # ----------------------------------------------------
-
-        total_spend = sum(
-            tx["price"]
-            for tx in tx_list
-        )
-
-        avg_spend = round(
-            total_spend / total_tx
-        )
-
-        # ----------------------------------------------------
-        # Favorite service
-        # ----------------------------------------------------
-
-        customer_service_counter = Counter()
-
-        for tx in tx_list:
-            for service in tx["services"]:
-                customer_service_counter[service] += 1
-
-        if customer_service_counter:
-            favorite_service = (
-                customer_service_counter
-                .most_common(1)[0][0]
-            )
-        else:
-            favorite_service = "Tidak diketahui"
-
-        # ----------------------------------------------------
-        # Contribution
-        # ----------------------------------------------------
-
-        contribution_pct = (
-            round(
-                (
-                    total_spend
-                    / total_store_revenue
-                    * 100
-                ),
-                2,
-            )
-            if total_store_revenue > 0
-            else 0
-        )
-
-        # ----------------------------------------------------
-        # Score
-        # ----------------------------------------------------
-
-        score = _calculate_prediction_score(
-            predicted_return_date=predicted_return_datetime,
-            tomorrow=tomorrow,
-            cycle_deviation=cycle_deviation,
-            transaction_count=total_tx,
-        )
-
-        # ----------------------------------------------------
-        # Tag
-        # ----------------------------------------------------
-
-        tag = _get_customer_tag(
-            total_tx=total_tx,
-            total_spend=total_spend,
-            days_since_last=days_since_last,
-            typical_cycle=typical_cycle,
-        )
-
-        # ----------------------------------------------------
-        # Prediction status
-        # ----------------------------------------------------
-
-        if delta_to_tomorrow == 0:
-            prediction_status = "Besok"
-
-        elif abs(delta_to_tomorrow) == 1:
-            prediction_status = "Sekitar besok"
-
-        elif delta_to_tomorrow < 0:
-            prediction_status = "Sudah lewat"
-
-        elif delta_to_tomorrow <= 3:
-            prediction_status = "Segera"
-
-        else:
-            prediction_status = "Belum"
-
-        # ----------------------------------------------------
-        # Reason
-        # ----------------------------------------------------
-
-        if prediction_status == "Besok":
-            reason = (
-                f"Biasanya kembali setiap "
-                f"{typical_cycle} hari."
+    def get_clay_predictions(store_id):
+        """
+        Ambil orders + order_items dari Supabase.
+        Semua calculation dilakukan di Python backend.
+        """
+        try:
+            response = (
+                supabase
+                .table("orders")
+                .select("*, order_items(*)")
+                .eq("store_id", store_id)
+                .execute()
             )
 
-        elif prediction_status == "Sekitar besok":
-            if delta_to_tomorrow < 0:
-                reason = (
-                    f"Estimasi kembali "
-                    f"{abs(delta_to_tomorrow)} hari lalu."
-                )
-            else:
-                reason = (
-                    f"Estimasi kembali "
-                    f"{delta_to_tomorrow} hari setelah besok."
-                )
+            orders = response.data or []
+            return calculate_tomorrow_prediction(orders)
 
-        elif prediction_status == "Sudah lewat":
-            reason = (
-                f"Sudah melewati estimasi siklus "
-                f"{typical_cycle} hari."
-            )
-
-        elif prediction_status == "Segera":
-            reason = (
-                f"Estimasi kembali "
-                f"{predicted_return_date.isoformat()}."
-            )
-
-        else:
-            reason = (
-                f"Estimasi kembali "
-                f"{predicted_return_date.isoformat()}."
-            )
-
-        confidence_level = _get_confidence_level(
-            transaction_count=total_tx,
-            cycle_deviation=cycle_deviation,
-        )
-
-        predictions.append({
-            "customer_id": last_transaction.get(
-                "customer_id"
-            ),
-
-            "name": last_transaction["name"],
-            "phone": last_transaction["phone"],
-
-            "tag": tag,
-
-            # SCORE, bukan probability.
-            "score": score,
-
-            "reason": reason,
-
-            "prediction_status": prediction_status,
-            "prediction_date": (
-                predicted_return_date.isoformat()
-            ),
-
-            "last_transaction": (
-                last_tx_date.isoformat()
-            ),
-
-            "days_since_last": round(
-                days_since_last,
-                1,
-            ),
-
-            "cycle_days": typical_cycle,
-
-            "cycle_deviation": round(
-                cycle_deviation,
-                2,
-            ),
-
-            "transaction_count": total_tx,
-
-            "total_spend": round(
-                total_spend
-            ),
-
-            "est_spend": avg_spend,
-
-            "favorite_service": favorite_service,
-
-            "contribution_percent": (
-                contribution_pct
-            ),
-
-            # Backward compatibility dengan
-            # versi kode sebelumnya.
-            "contribution": (
-                f"{contribution_pct}%"
-            ),
-
-            "confidence_level": confidence_level,
-        })
+        except Exception as e:
+            print(f"Error fetching orders for Clay prediction: {str(e)}")
+            return {
+                "top_services": [],
+                "today_predictions": [],
+                "tomorrow_predictions": [],
+                "predictions": [],
+                "metadata": {
+                    "error": str(e),
+                },
+            }
 
     # ========================================================
     # 5. TOP PREDICTIONS

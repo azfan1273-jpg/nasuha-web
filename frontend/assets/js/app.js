@@ -212,7 +212,7 @@ function renderAuthState() {
     // 1. Update Header Kanan Atas -> Ubah Login/Register jadi Nama & Logout
     if (headerTextGroup) {
       headerTextGroup.innerHTML = `
-        <span class="text-login" style="color: #ffffff;">${userDisplayName}</span>
+        <span class="text-login" style="color: #ffffff;">${escHTML(userDisplayName)}</span>
         <span class="text-register" style="color: #ff5252; font-weight: 600;">Logout</span>
       `;
     }
@@ -281,20 +281,21 @@ async function loadDatabaseRealData() {
         return;
       }
 
+      // SEMUA nilai dari server di-escape dulu (anti DOM XSS)
       tableBody.innerHTML = listData.map(row => `
         <tr>
-          <td>${row.id || '-'}</td>
-          <td><strong>${row.order_number || row.nota_number || '-'}</strong></td>
-          <td>${row.customer_name || '-'}</td>
-          <td>${row.service_name || '-'}</td>
+          <td>${escHTML(row.id)}</td>
+          <td><strong>${escHTML(row.order_number || row.nota_number || '-')}</strong></td>
+          <td>${escHTML(row.customer_name || '-')}</td>
+          <td>${escHTML(row.service_name || '-')}</td>
           <td>Rp ${Number(row.total_price || 0).toLocaleString('id-ID')}</td>
-          <td><span class="badge ${row.status === 'Lunas' ? 'badge-success' : 'badge-warning'}">${row.status || 'Proses'}</span></td>
-          <td>${row.payment_method || '-'}</td>
+          <td><span class="badge ${row.status === 'Lunas' ? 'badge-success' : 'badge-warning'}">${escHTML(row.status || 'Proses')}</span></td>
+          <td>${escHTML(row.payment_method || '-')}</td>
           <td>${row.created_at ? new Date(row.created_at).toLocaleDateString('id-ID') : '-'}</td>
-          <td>${row.date_estimate || '-'}</td>
-          <td>${row.date_paid || '-'}</td>
+          <td>${escHTML(row.date_estimate || '-')}</td>
+          <td>${escHTML(row.date_paid || '-')}</td>
           <td>Rp ${Number(row.discount || 0).toLocaleString('id-ID')}</td>
-          <td>${row.notes || '-'}</td>
+          <td>${escHTML(row.notes || '-')}</td>
           <td><button class="btn-sm btn-edit">Edit</button></td>
         </tr>
       `).join("");
@@ -335,13 +336,13 @@ async function loadDownloadData() {
       <div class="download-card">
         <div class="app-icon">${app.type === 'APK' ? '📱' : '💻'}</div>
         <div class="app-details">
-          <h3>${app.title}</h3>
-          <p class="app-meta">Versi ${app.version} • ${app.type} • ${app.size}</p>
-          <p class="app-desc">${app.description || ''}</p>
+          <h3>${escHTML(app.title)}</h3>
+          <p class="app-meta">Versi ${escHTML(app.version)} • ${escHTML(app.type)} • ${escHTML(app.size)}</p>
+          <p class="app-desc">${escHTML(app.description || '')}</p>
         </div>
         <div class="app-action">
-          <a href="${app.download_url}" target="_blank" download class="btn-primary btn-download">
-            ⬇️ Download ${app.type}
+          <a href="${safeUrl(app.download_url)}" target="_blank" rel="noopener noreferrer" download class="btn-primary btn-download">
+            ⬇️ Download ${escHTML(app.type)}
           </a>
         </div>
       </div>
@@ -407,20 +408,23 @@ async function loadClayEngineData() {
         const tagColor = item.tag === 'VIP' ? '#ffc107' : (item.tag === 'Resiko Churn' ? '#ff5252' : '#00E676');
         const scoreColor = item.score >= 80 ? '#00E676' : (item.score >= 55 ? '#ffc107' : '#ff9800');
 
+        // Data dari server di-escape; tombol WA pakai addEventListener + data-* (bukan inline onclick)
         return `
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
             <td style="padding: 12px;">
-              <strong style="color: #fff; display: block;">${item.name || '-'}</strong>
-              <span style="font-size: 0.75rem; color: ${tagColor}; font-weight: 600;">${item.tag}</span>
+              <strong style="color: #fff; display: block;">${escHTML(item.name || '-')}</strong>
+              <span style="font-size: 0.75rem; color: ${tagColor}; font-weight: 600;">${escHTML(item.tag)}</span>
             </td>
-            <td style="padding: 12px; font-weight: bold; color: ${scoreColor};">${item.score}%</td>
-            <td style="padding: 12px; color: #ccc;">${item.reason || '-'}</td>
+            <td style="padding: 12px; font-weight: bold; color: ${scoreColor};">${Number(item.score) || 0}%</td>
+            <td style="padding: 12px; color: #ccc;">${escHTML(item.reason || '-')}</td>
             <td style="padding: 12px; font-weight: bold; color: #00E676;">Rp ${Number(item.est_spend || 0).toLocaleString('id-ID')}</td>
-            <td style="padding: 12px; color: #ccc;">${item.favorite_service || '-'}</td>
-            <td style="padding: 12px; color: #28c8ff; font-weight: bold;">${item.transaction_count || item.total_tx || 0} Order</td>
-            <td style="padding: 12px; color: #ccc;">${item.contribution}</td>
+            <td style="padding: 12px; color: #ccc;">${escHTML(item.favorite_service || '-')}</td>
+            <td style="padding: 12px; color: #28c8ff; font-weight: bold;">${Number(item.transaction_count || item.total_tx || 0)} Order</td>
+            <td style="padding: 12px; color: #ccc;">${escHTML(item.contribution)}</td>
             <td style="padding: 12px; text-align: center;">
-              <button onclick="sendWhatsAppReminder('${item.phone || ''}', '${item.name || ''}')" 
+              <button class="btn-wa-reminder"
+                      data-phone="${escHTML(item.phone || '')}"
+                      data-name="${escHTML(item.name || '')}"
                       style="background: rgba(0, 230, 118, 0.15); border: 1px solid rgba(0, 230, 118, 0.4); color: #00E676; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: bold;">
                 💬 WA
               </button>
@@ -428,6 +432,13 @@ async function loadClayEngineData() {
           </tr>
         `;
       }).join("");
+
+      // Delegasi event untuk tombol WA (hindari injection via inline handler)
+      tableBody.querySelectorAll('.btn-wa-reminder').forEach(btn => {
+        btn.addEventListener('click', () => {
+          sendWhatsAppReminder(btn.dataset.phone || '', btn.dataset.name || '');
+        });
+      });
     }
 
   } catch (error) {

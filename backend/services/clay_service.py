@@ -2,7 +2,6 @@ from datetime import datetime, timezone, timedelta
 from collections import defaultdict, Counter
 from statistics import median
 
-from config.supabase_config import supabase
 
 
 # ============================================================
@@ -898,50 +897,3 @@ def calculate_tomorrow_prediction(orders):
     }
 
 
-# ============================================================
-# SUPABASE WRAPPER
-# ============================================================
-
-def get_clay_predictions(store_id):
-    """
-    Ambil orders + order_items dari Supabase.
-
-    Relasi yang diharapkan:
-        order_items.order_id -> orders.id
-
-    Semua calculation dilakukan di Python backend.
-    """
-
-    try:
-        response = (
-            supabase
-            .table("orders")
-            .select(
-                "*, order_items(*)"
-            )
-            .eq(
-                "store_id",
-                store_id,
-            )
-            .execute()
-        )
-
-        orders = response.data or []
-
-        return calculate_tomorrow_prediction(
-            orders
-        )
-
-    except Exception as e:
-        print(
-            "Error fetching orders for Clay prediction: "
-            f"{str(e)}"
-        )
-
-        return {
-            "top_services": [],
-            "predictions": [],
-            "metadata": {
-                "error": str(e),
-            },
-        }

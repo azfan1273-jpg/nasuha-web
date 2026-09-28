@@ -110,7 +110,9 @@ def _authorized_store_id(auth_header):
         return None, (jsonify({"status": "error", "message": "Token tidak memuat identitas user"}), 401)
 
     try:
-        store_id = _fetch_own_store_id(user_id, auth_header)
+        # Perbaiki NameError: variabel yang benar adalah `token` (hasil _get_bearer_token)
+        user_auth = f"Bearer {token}"
+        store_id = _fetch_own_store_id(user_id, user_auth)
     except requests.RequestException:
         return None, (jsonify({"status": "error", "message": "Layanan sedang gangguan, coba lagi nanti"}), 503)
     except Exception:

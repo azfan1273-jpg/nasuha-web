@@ -1,13 +1,16 @@
-"""Utilitas keamanan: rate limiting in-memory + sanitasi input untuk query string Supabase."""
+"""Utilitas keamanan: rate limiting in-memory + sanitasi input untuk query string Supabase.
+
+CATATAN FastAPI:
+- Endpoint di project ini didefinisikan dengan `def` (sync), sehingga dijalankan
+  FastAPI di threadpool. Jadi `threading.Lock` di sini tetap aman.
+- Kalau nanti pindah ke `async def`, ganti Lock ke `asyncio.Lock` atau pakai Redis
+  (rekomendasi untuk production multi-instance / Vercel serverless).
+"""
 import re
 import time
 from collections import defaultdict, deque
 from threading import Lock
 
-# ---------------------------------------------------------------------------
-# Rate limiter sederhana (in-memory). Cukup untuk single-instance; jika
-# deploy multi-instance, ganti dengan Redis.
-# ---------------------------------------------------------------------------
 _hits = defaultdict(deque)
 _lock = Lock()
 
@@ -25,11 +28,6 @@ def is_rate_limited(key: str, limit: int = 10, window: int = 60) -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
-# Sanitasi nilai yang disisipkan ke query string PostgREST
-# (mis. ?store_id=eq.<value>). Ini mencegah "parameter injection" ke REST API,
-# ekuivalen proteksi SQL-injection pada pola raw-string-query.
-# ---------------------------------------------------------------------------
 _UUID_RE = re.compile(r"^[0-9a-fA-F-]{8,64}$")
 
 
@@ -40,11 +38,8 @@ def sanitize_filter_value(value, max_len: int = 128) -> str:
     s = str(value).strip()
     if not s or len(s) > max_len:
         raise ValueError("Nilai filter tidak valid")
-    # UUID (user id / store id umumnya UUID Supabase)
     if _UUID_RE.match(s):
         return s
-    # Alternatif: alfanumerik + dash/underscore saja. Karakter seperti &, =, ., *,
-    # spasi, kurung diblokir agar tidak bisa menyuntik filter tambahan.
     if re.match(r"^[A-Za-z0-9_-]+$", s):
         return s
     raise ValueError("Format nilai filter tidak diizinkan")

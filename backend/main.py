@@ -1,31 +1,63 @@
 import os
-from flask import Flask, jsonify, request, send_from_directory
-from flask_cors import CORS
-from config.supabase_config import supabase
-from security import is_rate_limited, is_valid_email
-from routes.analytics import analytics_bp
-from routes.clay_engine import clay_bp
+import logging
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Load .env SEBELUM apapun yang baca os.environ.
+# Path: main.py ada di backend/, .env ada di root project (1 level di atas).
+# ---------------------------------------------------------------------------
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from routes.analytics import analytics_router
+from routes.clay_engine import clay_router
+
+# Logger biar traceback muncul di terminal server (bukan cuma 500 generic)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("nasuha")
 
 frontend_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend'))
 
-app = Flask(__name__, static_folder=frontend_folder, static_url_path='')
+# docs_url/redoc_url di-disable: jangan ekspos skema API publik
+app = FastAPI(title="Nasuha Web API", docs_url=None, redoc_url=None, openapi_url=None)
 
-# CORS: BATASI origin. Di production, set ALLOWED_ORIGINS (comma-separated)
-# di env Vercel, mis. "https://nasuha-web.vercel.app".
+
+# ---------------------------------------------------------------------------
+# CORS: batasi origin di production
+# ---------------------------------------------------------------------------
 _dev = os.environ.get('FLASK_ENV', 'production').lower() == 'development'
 _allowed_origins = [o.strip() for o in os.environ.get('ALLOWED_ORIGINS', '').split(',') if o.strip()]
+
 if _dev:
-    CORS(app)  # hanya longgar saat development lokal
+    _origins = ["*"]
 elif _allowed_origins:
-    CORS(app, resources={r"/api/*": {"origins": _allowed_origins}})
+    _origins = _allowed_origins
 else:
-    # Production tanpa ALLOWED_ORIGINS: jangan izinkan cross-origin sama sekali.
-    CORS(app, resources={r"/api/*": {"origins": []}})
+    _origins = []  # production tanpa ALLOWED_ORIGINS → tidak ada cross-origin
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
-# Headers keamanan global untuk semua response
-@app.after_request
-def set_security_headers(resp):
+# ---------------------------------------------------------------------------
+# Security headers global
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    resp = await call_next(request)
     resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
     resp.headers.setdefault('X-Frame-Options', 'DENY')
     resp.headers.setdefault('Referrer-Policy', 'same-origin')
@@ -38,85 +70,87 @@ def set_security_headers(resp):
     return resp
 
 
-# Endpoint diagnostik ENV DIHAPUS — dulu membocorkan URL & prefix key Supabase.
-# Jika butuh cek konfigurasi, gunakan log server, bukan endpoint publik.
+# ---------------------------------------------------------------------------
+# Exception handler: samakan format error dengan yang diharapkan frontend
+#   { "status": "error", "message": "<detail>" }
+#
+# FIX BUG #3: kalau exc.detail berupa list (dari validasi Pydantic 422),
+# ringkas jadi string. Tanpa ini, frontend render "[object Object]".
+# ---------------------------------------------------------------------------
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    detail = exc.detail
+
+    if isinstance(detail, list):
+        # Format Pydantic: [{"loc": [...], "msg": "...", "type": "..."}, ...]
+        parts = []
+        for d in detail:
+            if isinstance(d, dict):
+                loc = ".".join(str(x) for x in d.get("loc", []))
+                msg = d.get("msg", "invalid")
+                parts.append(f"{loc}: {msg}" if loc else msg)
+            else:
+                parts.append(str(d))
+        detail = "; ".join(parts) if parts else "Validasi gagal"
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"status": "error", "message": str(detail)},
+    )
 
 
-# Register Blueprints
-app.register_blueprint(analytics_bp, url_prefix='/api')
-app.register_blueprint(clay_bp, url_prefix='/api/clay')
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    # Log traceback lengkap ke server, jangan ke client.
+    logger.exception("Unhandled error at %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "message": "Terjadi kesalahan pada server"},
+    )
 
 
-# Endpoint Login untuk Frontend Web
-@app.route('/api/login', methods=['POST'])
-def login():
-    try:
-        # Rate limiting anti brute-force: 5 percobaan / IP / menit
-        fwd = request.headers.get('X-Forwarded-For', '')
-        ip = fwd.split(',')[0].strip() if fwd else (request.remote_addr or 'unknown')
-        if is_rate_limited(f"login:{ip}", limit=5, window=60):
-            return jsonify({'error': 'Terlalu banyak percobaan login. Coba lagi dalam 1 menit.'}), 429
-
-        data = request.get_json(silent=True) or {}
-        email = str(data.get('email', '')).strip().lower()
-        password = str(data.get('password', ''))
-
-        if not email or not password:
-            return jsonify({'error': 'Email dan password wajib diisi'}), 400
-        if not is_valid_email(email) or len(password) > 128:
-            return jsonify({'error': 'Kredensial tidak valid'}), 401
-
-        if supabase is None:
-            return jsonify({'error': 'Layanan sedang gangguan, coba lagi nanti'}), 503
-
-        # Memanggil Auth Supabase
-        response = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-
-        # Ekstrak data user & session
-        user_data = response.user.dict() if hasattr(response.user, 'dict') else response.user
-        session_data = response.session.dict() if hasattr(response.session, 'dict') else response.session
-        token = response.session.access_token if response.session else None
-
-        return jsonify({
-            'message': 'Login berhasil',
-            'user': user_data,
-            'session': session_data,
-            'access_token': token
-        }), 200
-
-    except Exception:
-        # Pesan generik — JANGAN membocorkan detail exception/Supabase ke client,
-        # dan JANGAN log alamat email user.
-        print(f"[LOGIN ERROR] from {ip}: authentication failed")
-        return jsonify({'error': 'Email atau password salah'}), 401
+# ---------------------------------------------------------------------------
+# Register routers
+# ---------------------------------------------------------------------------
+app.include_router(analytics_router, prefix="/api")
+app.include_router(clay_router, prefix="/api/clay")
 
 
-# Route Frontend Web Static (Handling Static & SPA Fallback)
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_static(path):
-    # Jika request mengarah ke API tapi tidak ketemu route-nya, kembalikan 404 JSON (jangan kirim HTML)
-    if path.startswith('api/'):
-        return jsonify({'error': 'Endpoint API tidak ditemukan'}), 404
+# ---------------------------------------------------------------------------
+# SPA + static files
+# ---------------------------------------------------------------------------
+@app.get("/")
+async def root_index():
+    return FileResponse(os.path.join(frontend_folder, "index.html"))
 
-    # Path traversal guard: pastikan target benar-benar di dalam folder frontend
-    target_path = os.path.realpath(os.path.join(app.static_folder, path))
-    static_root = os.path.realpath(app.static_folder)
-    if not target_path.startswith(static_root + os.sep) and target_path != static_root:
-        return jsonify({'error': 'Path tidak valid'}), 400
 
-    # Cek apakah file fisik (css, js, png, dll) ada di folder frontend
-    if path != "" and os.path.isfile(target_path):
-        return send_from_directory(static_root, os.path.relpath(target_path, static_root))
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    # /api/* yang tidak match router → JSON 404 (bukan index.html)
+    if full_path.startswith("api/") or full_path == "api":
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "message": "Endpoint API tidak ditemukan"},
+        )
 
-    # Jika bukan file fisik atau route halaman web biasa, kirimkan index.html
-    return send_from_directory(static_root, 'index.html')
+    # Path traversal guard
+    static_root = os.path.realpath(frontend_folder)
+    target = os.path.realpath(os.path.join(frontend_folder, full_path))
+    if target != static_root and not target.startswith(static_root + os.sep):
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Path tidak valid"},
+        )
+
+    # File fisik (css/js/png/html component) → sajikan langsung
+    if full_path and os.path.isfile(target):
+        return FileResponse(target)
+
+    # Route SPA / halaman web → index.html
+    return FileResponse(os.path.join(frontend_folder, "index.html"))
 
 
 if __name__ == '__main__':
-    # debug=False default: debugger Werkzeug = RCE publik. Hanya aktifkan via env.
-    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
-    app.run(host='127.0.0.1', port=8080, debug=debug_mode)
+    import uvicorn
+    reload_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+    uvicorn.run("main:app", host='127.0.0.1', port=8080, reload=reload_mode)

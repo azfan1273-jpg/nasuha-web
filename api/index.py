@@ -8,9 +8,16 @@ backend_dir = os.path.join(base_dir, 'backend')
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from main import app
+from main import app  # noqa: E402
 
-# Set path folder static frontend agar kebaca Vercel
-app.static_folder = os.path.join(base_dir, 'frontend')
+# Path folder static frontend (dipakai main.py)
+app_frontend = os.path.join(base_dir, 'frontend')
+app.state.frontend_folder = app_frontend  # opsional, buat debugging
 
-app = app
+# Vercel: cari objek `app` (ASGI) atau `handler`.
+# Kalau runtime butuh AWS Lambda-style handler, Mangum jadi jembatan.
+try:
+    from mangum import Mangum
+    handler = Mangum(app, lifespan="off")
+except ImportError:
+    handler = app

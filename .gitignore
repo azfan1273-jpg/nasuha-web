@@ -1,13 +1,18 @@
+# Python
 venv/
 __pycache__/
 *.pyc
-.env
+
+# Vercel
 .vercel
 
+# Zip
 backend.zip
 *.zip
 
-# --- Environment & secrets (JANGAN commit) ---
+# Env
 .env
 .env.*
+
+#Local
 *.local

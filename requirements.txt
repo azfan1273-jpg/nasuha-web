@@ -1,8 +1,7 @@
-Flask
-flask-limiter
-PyJWT
-flask-cors
-supabase
-requests
-httpx
-python-dotenv
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+mangum>=0.17.0
+supabase>=2.0.0
+requests>=2.31.0
+PyJWT[crypto]>=2.8.0
+python-dotenv>=1.0.0

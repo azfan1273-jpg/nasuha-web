@@ -16,3 +16,11 @@ backend.zip
 
 #Local
 *.local
+
+# === DEBUG FILES ===
+frontend/assets/js/debug.js
+frontend/debug_pelanggan.html
+frontend/debug_pelanggan.js
+frontend/test_endpoint.css
+frontend/test_endpoint.html
+frontend/test_endpoint.js

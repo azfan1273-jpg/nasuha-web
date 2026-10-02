@@ -1,376 +1,163 @@
-from datetime import datetime, timezone, timedelta
+"""
+Clay Prediction Engine v4.7.
+
+Update dari v4.3:
+    - Filter konsistensi: skip customer dengan relative deviation > 0.35.
+      (Mba Eni cycle 6, dev 2.33 -> 0.39 -> skip)
+    - Metadata tambah now_utc_iso & tomorrow_iso untuk verifikasi timezone.
+
+Filosofi: pelanggan gambling (pola nggak jelas) tidak bisa diprediksi.
+"""
+
+from datetime import timedelta
 from collections import defaultdict, Counter
 from statistics import median
 
-
-
-# ============================================================
-# CLAY PREDICTION ENGINE
-# Database:
-#   orders
-#   order_items
-#
-# orders (sesuai struktur yang terlihat):
-#   id, customer_name, service_name, total_price,
-#   created_at, store_id, dst.
-#
-# order_items:
-#   id, order_id, service_name, qty, price, subtotal,
-#   created_at, unit, store_id
-#
-# Prinsip:
-#   Supabase = data
-#   Python   = business logic / prediction
-#   Flutter  = display
-# ============================================================
+from services.shared.customer_utils import (
+    get_customer_key,
+    get_customer_code,
+    get_customer_name,
+    get_phone,
+)
+from services.shared.order_utils import (
+    build_service_stats,
+    extract_services_from_order,
+    get_order_price,
+)
+from services.shared.cycle_utils import calculate_cycle_days
+from services.shared.datetime_utils import (
+    parse_datetime,
+    get_local_tomorrow,
+    to_local,
+    utc_now,
+)
+from services.shared.time_pattern_utils import (
+    DAY_NAMES_ID,
+    analyze_day_pattern,
+    analyze_hour_pattern,
+    format_schedule_lines,
+)
 
 
 # ============================================================
 # CONFIG
 # ============================================================
 
-MIN_SERVICE_USAGE = 10
-MIN_TRANSACTIONS_FOR_PREDICTION = 3
-TOP_PREDICTIONS_LIMIT = 5
+MIN_SERVICE_USAGE = 5
+MIN_TRANSACTIONS_FOR_PREDICTION = 4
+TOP_PREDICTIONS_LIMIT = 8
+MIN_SCORE_FOR_DISPLAY = 50
 
-# Cycle yang terlalu ekstrem dianggap outlier.
-MIN_CYCLE_DAYS = 1
-MAX_CYCLE_DAYS = 90
+MIN_DAYS_ABSOLUTE = 2.0
+MIN_DAYS_RATIO = 0.5
 
-# Kandidat sekitar "besok".
-# 0 = tepat besok
-# 1 = satu hari sebelum / sesudah
-PREDICTION_TOLERANCE_DAYS = 1
+MIN_CYCLE_FOR_PATTERN = 6
+PATTERN_STRONG_PCT = 0.45
 
-
-# ============================================================
-# DATETIME HELPERS
-# ============================================================
-
-def _parse_datetime(value):
-    """Parse ISO datetime dan normalisasi ke UTC."""
-    if not value:
-        return None
-
-    try:
-        value = str(value).replace("Z", "+00:00")
-        dt = datetime.fromisoformat(value)
-
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-
-        return dt.astimezone(timezone.utc)
-
-    except (ValueError, TypeError):
-        return None
+# Filter konsistensi: skip customer kalau pola cycle-nya terlalu berantakan.
+# relative_deviation = cycle_deviation / typical_cycle
+MAX_RELATIVE_DEVIATION = 0.35
 
 
 # ============================================================
-# CUSTOMER HELPERS
+# STATUS KONTRIBUSI
 # ============================================================
 
-def _clean_text(value):
-    if value is None:
-        return ""
-
-    return str(value).strip()
-
-
-def _normalize_phone(value):
-    """
-    Normalisasi nomor HP sederhana.
-    '-' / kosong tidak dianggap sebagai nomor.
-    """
-    value = _clean_text(value)
-
-    if not value or value in {"-", "null", "NULL"}:
-        return ""
-
-    digits = "".join(ch for ch in value if ch.isdigit())
-
-    if len(digits) < 6:
-        return ""
-
-    return digits
-
-
-def _get_phone(order):
-    """
-    Screenshot menunjukkan kolom customer_ terpotong.
-    Karena nama kolom sebenarnya tidak terlihat penuh, engine
-    mendukung beberapa nama umum tanpa mengharuskan salah satunya.
-
-    Kalau database lu ternyata punya nama kolom lain, tambahkan
-    nama field-nya di list ini.
-    """
-    candidates = (
-        "customer_phone",
-        "phone",
-        "customer_number",
-        "customer_no",
-        "customer_",
-    )
-
-    for field in candidates:
-        value = _normalize_phone(order.get(field))
-
-        if value:
-            return value
-
-    return ""
-
-
-def _get_customer_name(order):
-    return (
-        _clean_text(order.get("customer_name"))
-        or _clean_text(order.get("name"))
-        or "Pelanggan Anonim"
-    )
-
-
-def _get_customer_key(order):
-    """
-    Karena struktur screenshot tidak menunjukkan customer_id yang
-    bisa dipastikan, identitas dibuat:
-
-        customer_id (jika tersedia)
-        -> phone
-        -> normalized name
-
-    Jadi nama yang sama dengan nomor berbeda tidak digabung.
-    """
-    customer_id = _clean_text(
-        order.get("customer_id")
-        or order.get("customer_uuid")
-    )
-
-    if customer_id:
-        return f"id:{customer_id}"
-
-    phone = _get_phone(order)
-
-    if phone:
-        return f"phone:{phone}"
-
-    name = _get_customer_name(order).lower()
-
-    return f"name:{name}"
+def _get_contribution_status(contribution_pct):
+    if contribution_pct >= 5.0:
+        return "VVIP"
+    if contribution_pct >= 4.0:
+        return "VIP"
+    if contribution_pct >= 3.0:
+        return "Best"
+    if contribution_pct >= 2.0:
+        return "Regular"
+    if contribution_pct >= 1.0:
+        return "Active"
+    return "Go"
 
 
 # ============================================================
-# ORDER / ITEM HELPERS
+# SPEND
 # ============================================================
 
-def _get_order_price(order):
-    try:
-        return float(order.get("total_price") or 0)
-    except (ValueError, TypeError):
-        return 0.0
+def _estimate_next_spend(tx_list):
+    if not tx_list:
+        return 0
+    recent = [tx["price"] for tx in tx_list[:3] if tx["price"] > 0]
+    if not recent:
+        return 0
+    if len(recent) == 1:
+        return round(recent[0])
+    if len(recent) == 2:
+        return round(sum(recent) / 2)
+    return round(median(recent))
 
 
-def _get_items(order):
-    items = order.get("order_items")
-
-    if not isinstance(items, list):
-        return []
-
-    return items
-
-
-def _get_item_service(item):
-    return _clean_text(item.get("service_name"))
-
-
-def _get_item_qty(item):
-    try:
-        qty = float(item.get("qty") or 1)
-
-        if qty <= 0:
-            return 1.0
-
-        return qty
-
-    except (ValueError, TypeError):
-        return 1.0
-
-
-def _get_item_subtotal(item):
-    """
-    Prioritas subtotal.
-    Fallback price * qty.
-
-    Ini penting karena order_items memang menyediakan:
-        price
-        qty
-        subtotal
-    """
-    try:
-        subtotal = float(item.get("subtotal") or 0)
-
-        if subtotal != 0:
-            return subtotal
-    except (ValueError, TypeError):
-        pass
-
-    try:
-        price = float(item.get("price") or 0)
-        qty = _get_item_qty(item)
-
-        return price * qty
-
-    except (ValueError, TypeError):
-        return 0.0
-
-
-def _extract_services_from_order(order):
-    """
-    Sumber utama service untuk Clay = order_items.
-
-    orders.service_name hanya dijadikan fallback kalau relationship
-    order_items tidak tersedia.
-    """
-    items = _get_items(order)
-
-    services = []
-
-    for item in items:
-        service = _get_item_service(item)
-
-        if service:
-            services.append(service)
-
-    if services:
-        return services
-
-    fallback = _clean_text(order.get("service_name"))
-
-    return [fallback] if fallback else []
+def _get_favorite_service(tx_list):
+    counter = Counter()
+    for idx, tx in enumerate(tx_list):
+        weight = 1.0 / (idx + 1)
+        for service in tx["services"]:
+            counter[service] += weight
+    if not counter:
+        return "Tidak diketahui"
+    return counter.most_common(1)[0][0]
 
 
 # ============================================================
-# SERVICE ANALYSIS
+# MIN DAYS
 # ============================================================
 
-def _build_service_stats(orders):
-    """
-    Hitung penggunaan service berdasarkan order_items.
-
-    Satu item service:
-        usage_count += qty
-
-    Satu order yang mengandung service:
-        order_count += 1
-
-    Revenue:
-        berasal dari subtotal item.
-    """
-    service_stats = defaultdict(
-        lambda: {
-            "usage_count": 0.0,
-            "order_count": 0,
-            "revenue": 0.0,
-        }
-    )
-
-    for order in orders:
-        items = _get_items(order)
-
-        # Kalau order_items tersedia, gunakan item-level data.
-        if items:
-            seen_in_order = set()
-
-            for item in items:
-                service = _get_item_service(item)
-
-                if not service:
-                    continue
-
-                qty = _get_item_qty(item)
-                subtotal = _get_item_subtotal(item)
-
-                service_stats[service]["usage_count"] += qty
-                service_stats[service]["revenue"] += subtotal
-
-                if service not in seen_in_order:
-                    service_stats[service]["order_count"] += 1
-                    seen_in_order.add(service)
-
-        else:
-            # Fallback untuk order lama yang mungkin belum punya
-            # row di order_items.
-            service = _clean_text(order.get("service_name"))
-
-            if service:
-                service_stats[service]["usage_count"] += 1
-                service_stats[service]["order_count"] += 1
-                service_stats[service]["revenue"] += _get_order_price(order)
-
-    return service_stats
+def _is_too_early(days_since_last, typical_cycle):
+    min_gap = max(MIN_DAYS_ABSOLUTE, typical_cycle * MIN_DAYS_RATIO)
+    return days_since_last < min_gap
 
 
 # ============================================================
-# CYCLE CALCULATION
+# KONSISTENSI (v4.7 BARU)
 # ============================================================
 
-def _calculate_cycle_days(transactions):
+def _is_inconsistent(cycle_deviation, typical_cycle):
     """
-    Hitung typical customer cycle menggunakan MEDIAN.
+    Cek apakah pola cycle customer terlalu berantakan untuk diprediksi.
+
+    relative_deviation = cycle_deviation / typical_cycle
 
     Contoh:
-        7, 7, 8, 60, 7
-
-    Mean   = 17.8
-    Median = 7
-
-    Median jauh lebih tahan terhadap transaksi abnormal.
+        Mba Eni: cycle=6, dev=2.33 -> 0.39 -> INCONSISTENT (> 0.35)
+        Cici   : cycle=5, dev=1.50 -> 0.30 -> OK
+        Bu Era : cycle=4, dev=0.50 -> 0.13 -> OK (konsisten)
     """
-    dates = sorted(
-        [
-            tx["date"]
-            for tx in transactions
-            if tx.get("date")
-        ],
-        reverse=False,
-    )
-
-    intervals = []
-
-    for i in range(len(dates) - 1):
-        diff_days = (
-            dates[i + 1] - dates[i]
-        ).total_seconds() / 86400
-
-        if MIN_CYCLE_DAYS <= diff_days <= MAX_CYCLE_DAYS:
-            intervals.append(diff_days)
-
-    if not intervals:
-        return 7, [], 0.0
-
-    typical_cycle = max(
-        1,
-        round(median(intervals)),
-    )
-
-    deviations = [
-        abs(interval - typical_cycle)
-        for interval in intervals
-    ]
-
-    avg_deviation = (
-        sum(deviations) / len(deviations)
-        if deviations
-        else 0.0
-    )
-
-    return (
-        typical_cycle,
-        intervals,
-        avg_deviation,
-    )
+    if typical_cycle <= 0:
+        return True
+    return (cycle_deviation / typical_cycle) > MAX_RELATIVE_DEVIATION
 
 
 # ============================================================
-# SCORE
+# DAY PATTERN MODIFIER
+# ============================================================
+
+def _day_pattern_modifier(tomorrow, day_info, typical_cycle):
+    if typical_cycle < MIN_CYCLE_FOR_PATTERN:
+        return 1.0
+    if not day_info or not day_info.get("has_strong"):
+        return 1.0
+
+    tomorrow_day = DAY_NAMES_ID[tomorrow.weekday()]
+    if tomorrow_day == day_info["primary"][0]:
+        return 1.0
+    if day_info.get("secondary") and tomorrow_day == day_info["secondary"][0]:
+        return 1.0
+
+    primary_pct = day_info["primary"][1]
+    if primary_pct >= PATTERN_STRONG_PCT:
+        return 0.55
+    return 0.80
+
+
+# ============================================================
+# SCORING
 # ============================================================
 
 def _calculate_prediction_score(
@@ -378,158 +165,91 @@ def _calculate_prediction_score(
     tomorrow,
     cycle_deviation,
     transaction_count,
+    day_pattern_multiplier=1.0,
 ):
-    """
-    Score 0-100.
+    delta = (predicted_return_date - tomorrow).days
 
-    IMPORTANT:
-    score bukan probability.
-
-    Score mengukur seberapa dekat tanggal prediksi customer
-    terhadap besok + seberapa konsisten histori cycle.
-    """
-
-    delta_days = abs(
-        (
-            predicted_return_date.date()
-            - tomorrow
-        ).days
-    )
-
-    # Timing
-    if delta_days == 0:
-        timing_score = 100
-    elif delta_days == 1:
-        timing_score = 85
-    elif delta_days == 2:
-        timing_score = 65
-    elif delta_days == 3:
-        timing_score = 45
+    if delta == 0:
+        timing = 100
+    elif delta == -1:
+        timing = 82
+    elif delta == 1:
+        timing = 78
+    elif delta == -2:
+        timing = 55
+    elif delta == 2:
+        timing = 50
     else:
-        timing_score = 20
+        timing = max(5, 25 - (abs(delta) - 2) * 8)
 
-    # Consistency
     if cycle_deviation <= 1:
-        consistency_multiplier = 1.00
+        consistency = 1.00
     elif cycle_deviation <= 2:
-        consistency_multiplier = 0.95
-    elif cycle_deviation <= 4:
-        consistency_multiplier = 0.85
+        consistency = 0.95
+    elif cycle_deviation <= 3:
+        consistency = 0.88
+    elif cycle_deviation <= 5:
+        consistency = 0.78
     else:
-        consistency_multiplier = 0.70
+        consistency = 0.65
 
-    # History strength
-    if transaction_count >= 8:
-        history_multiplier = 1.00
+    if transaction_count >= 10:
+        history = 1.00
+    elif transaction_count >= 7:
+        history = 0.96
     elif transaction_count >= 5:
-        history_multiplier = 0.95
+        history = 0.92
+    elif transaction_count >= 4:
+        history = 0.85
     else:
-        history_multiplier = 0.90
+        history = 0.75
 
-    score = round(
-        timing_score
-        * consistency_multiplier
-        * history_multiplier
-    )
-
-    return max(0, min(100, score))
+    score = timing * consistency * history * day_pattern_multiplier
+    return max(0, min(100, round(score)))
 
 
-# ============================================================
-# CONFIDENCE
-# ============================================================
-
-def _get_confidence_level(
-    transaction_count,
-    cycle_deviation,
-):
+def _get_confidence_level(transaction_count, cycle_deviation):
     if transaction_count >= 8 and cycle_deviation <= 2:
         return "Tinggi"
-
     if transaction_count >= 5 and cycle_deviation <= 4:
         return "Sedang"
-
     return "Rendah"
 
 
 # ============================================================
-# TAG
+# MAIN
 # ============================================================
 
-def _get_customer_tag(
-    total_tx,
-    total_spend,
-    days_since_last,
-    typical_cycle,
-):
-    if total_tx >= 5 and total_spend >= 150000:
-        base_tag = "VIP"
-    else:
-        base_tag = "Aktif"
-
-    if days_since_last > typical_cycle + 7:
-        return "Resiko Churn"
-
-    return base_tag
-
-
-# ============================================================
-# MAIN ENGINE
-# ============================================================
-
-def calculate_tomorrow_prediction(orders):
-    """
-    Main Clay prediction engine.
-
-    Input:
-        orders dari Supabase dengan nested order_items.
-
-    Output:
-        top_services
-        predictions
-        metadata
-    """
-
-    now_utc = datetime.now(timezone.utc)
-    tomorrow = (
-        now_utc + timedelta(days=1)
-    ).date()
+def calculate_tomorrow_prediction(orders, timezone_str):
+    tomorrow = get_local_tomorrow(timezone_str)
+    now_utc = utc_now()
+    now_local = to_local(now_utc, timezone_str)
 
     if not orders:
         return {
-            "top_services": [],
-            "predictions": [],
+            "top_services": [], "predictions": [],
             "metadata": {
-                "total_orders": 0,
-                "total_customers": 0,
-                "customers_analyzed": 0,
+                "total_orders": 0, "total_customers": 0,
+                "customers_analyzed": 0, "customers_shown": 0,
                 "prediction_date": tomorrow.isoformat(),
-                "algorithm": "median-cycle-v3",
+                "timezone": timezone_str,
+                "now_utc": now_utc.isoformat(),
+                "now_local": now_local.isoformat() if now_local else None,
+                "algorithm": "median-cycle-v4.7",
             },
         }
 
-    # ========================================================
-    # 1. SERVICE STATISTICS
-    # ========================================================
-
-    service_stats = _build_service_stats(orders)
-
-    # Routine service berdasarkan jumlah ORDER,
-    # bukan qty kilogram/pieces.
+    # 1. Service stats
+    service_stats = build_service_stats(orders)
     routine_services = {
-        service
-        for service, stats in service_stats.items()
-        if stats["order_count"] >= MIN_SERVICE_USAGE
+        s for s, st in service_stats.items()
+        if st["order_count"] >= MIN_SERVICE_USAGE
     }
 
     top_services_summary = []
-
     for service, stats in sorted(
         service_stats.items(),
-        key=lambda x: (
-            x[1]["order_count"],
-            x[1]["revenue"],
-        ),
+        key=lambda x: (x[1]["order_count"], x[1]["revenue"]),
         reverse=True,
     ):
         top_services_summary.append({
@@ -540,360 +260,162 @@ def calculate_tomorrow_prediction(orders):
             "is_routine": service in routine_services,
         })
 
-    # ========================================================
-    # 2. STORE REVENUE
-    # ========================================================
-    # Ambil revenue langsung dari orders.
-    # Ini tidak dibatasi routine service.
-    total_store_revenue = sum(
-        _get_order_price(order)
-        for order in orders
-    )
+    # 2. Revenue
+    total_store_revenue = sum(get_order_price(o) for o in orders)
 
-    # ========================================================
-    # 3. GROUP TRANSACTIONS PER CUSTOMER
-    # ========================================================
-
+    # 3. Group per customer
     customer_map = defaultdict(list)
-
     for order in orders:
-        created_at = _parse_datetime(
-            order.get("created_at")
-        )
-
+        created_at = parse_datetime(order.get("created_at"))
         if not created_at:
             continue
-
-        customer_key = _get_customer_key(order)
-
-        services = _extract_services_from_order(order)
-
-        if not services:
-            services = ["Tidak diketahui"]
-
-        # Service yang benar-benar routine.
-        routine_used = [
-            service
-            for service in services
-            if service in routine_services
-        ]
-
-        # Untuk analisa customer:
-        # kalau customer punya routine service, gunakan itu.
-        # kalau tidak, gunakan semua service histori.
-        selected_services = (
-            routine_used
-            if routine_used
-            else services
-        )
+        customer_key = get_customer_key(order)
+        services = extract_services_from_order(order) or ["Tidak diketahui"]
+        routine_used = [s for s in services if s in routine_services]
+        selected = routine_used if routine_used else services
 
         customer_map[customer_key].append({
-            "customer_id": (
-                order.get("customer_id")
-                or order.get("customer_uuid")
-            ),
-            "name": _get_customer_name(order),
-            "phone": _get_phone(order),
-            "price": _get_order_price(order),
-            "services": selected_services,
+            "customer_code": get_customer_code(order),
+            "name": get_customer_name(order),
+            "phone": get_phone(order),
+            "price": get_order_price(order),
+            "services": selected,
             "date": created_at,
         })
 
-    # ========================================================
-    # 4. CUSTOMER PREDICTION
-    # ========================================================
-
+    # 4. Loop prediksi
     predictions = []
+    skipped = []
 
     for customer_key, tx_list in customer_map.items():
-
         if len(tx_list) < MIN_TRANSACTIONS_FOR_PREDICTION:
             continue
 
-        tx_list.sort(
-            key=lambda x: x["date"],
-            reverse=True,
-        )
-
-        last_transaction = tx_list[0]
-        last_tx_date = last_transaction["date"]
-
-        days_since_last = max(
-            0.0,
-            (
-                now_utc - last_tx_date
-            ).total_seconds() / 86400,
-        )
-
+        tx_list.sort(key=lambda x: x["date"], reverse=True)
+        last_tx = tx_list[0]
+        last_tx_date = last_tx["date"]
+        customer_name = last_tx["name"]
         total_tx = len(tx_list)
 
-        # ----------------------------------------------------
-        # Cycle
-        # ----------------------------------------------------
-
-        typical_cycle, intervals, cycle_deviation = (
-            _calculate_cycle_days(tx_list)
+        days_since_last = max(
+            0.0, (now_utc - last_tx_date).total_seconds() / 86400,
         )
 
-        predicted_return_datetime = (
-            last_tx_date
-            + timedelta(days=typical_cycle)
-        )
+        typical_cycle, _, cycle_deviation = calculate_cycle_days(tx_list)
+        if typical_cycle is None:
+            continue
 
-        predicted_return_date = (
-            predicted_return_datetime.date()
-        )
+        # === FILTER 1: min days ===
+        if _is_too_early(days_since_last, typical_cycle):
+            min_gap = max(MIN_DAYS_ABSOLUTE, typical_cycle * MIN_DAYS_RATIO)
+            skipped.append({
+                "name": customer_name,
+                "reason": f"terlalu cepat ({days_since_last:.1f}h < {min_gap:.1f}h)",
+            })
+            continue
 
-        delta_to_tomorrow = (
-            predicted_return_date - tomorrow
-        ).days
+        # === FILTER 2: konsistensi (v4.7) ===
+        if _is_inconsistent(cycle_deviation, typical_cycle):
+            rel = cycle_deviation / typical_cycle if typical_cycle else 0
+            skipped.append({
+                "name": customer_name,
+                "reason": f"pola tidak konsisten (rel-dev {rel:.2f} > {MAX_RELATIVE_DEVIATION})",
+            })
+            continue
 
-        # ----------------------------------------------------
-        # Spend
-        # ----------------------------------------------------
+        # Predicted return date (zona toko)
+        last_tx_local = to_local(last_tx_date, timezone_str)
+        predicted_local = last_tx_local + timedelta(days=typical_cycle)
+        predicted_date = predicted_local.date()
+        delta_to_tomorrow = (predicted_date - tomorrow).days
 
-        total_spend = sum(
-            tx["price"]
-            for tx in tx_list
-        )
+        if delta_to_tomorrow < -1 or delta_to_tomorrow > 0:
+            continue
 
-        avg_spend = round(
-            total_spend / total_tx
-        )
+        day_info = analyze_day_pattern(tx_list, timezone_str)
+        hour_info = analyze_hour_pattern(tx_list, timezone_str)
+        pattern_multiplier = _day_pattern_modifier(tomorrow, day_info, typical_cycle)
 
-        # ----------------------------------------------------
-        # Favorite service
-        # ----------------------------------------------------
+        total_spend = sum(tx["price"] for tx in tx_list)
+        avg_spend = round(total_spend / total_tx) if total_tx > 0 else 0
+        est_spend = _estimate_next_spend(tx_list)
 
-        customer_service_counter = Counter()
-
-        for tx in tx_list:
-            for service in tx["services"]:
-                customer_service_counter[service] += 1
-
-        if customer_service_counter:
-            favorite_service = (
-                customer_service_counter
-                .most_common(1)[0][0]
-            )
-        else:
-            favorite_service = "Tidak diketahui"
-
-        # ----------------------------------------------------
-        # Contribution
-        # ----------------------------------------------------
+        favorite_service = _get_favorite_service(tx_list)
 
         contribution_pct = (
-            round(
-                (
-                    total_spend
-                    / total_store_revenue
-                    * 100
-                ),
-                2,
-            )
-            if total_store_revenue > 0
-            else 0
+            round(total_spend / total_store_revenue * 100, 2)
+            if total_store_revenue > 0 else 0
         )
-
-        # ----------------------------------------------------
-        # Score
-        # ----------------------------------------------------
+        tag = _get_contribution_status(contribution_pct)
 
         score = _calculate_prediction_score(
-            predicted_return_date=predicted_return_datetime,
+            predicted_return_date=predicted_date,
             tomorrow=tomorrow,
             cycle_deviation=cycle_deviation,
             transaction_count=total_tx,
+            day_pattern_multiplier=pattern_multiplier,
         )
 
-        # ----------------------------------------------------
-        # Tag
-        # ----------------------------------------------------
+        if score < MIN_SCORE_FOR_DISPLAY:
+            skipped.append({
+                "name": customer_name,
+                "reason": f"skor {score} < {MIN_SCORE_FOR_DISPLAY}",
+            })
+            continue
 
-        tag = _get_customer_tag(
-            total_tx=total_tx,
-            total_spend=total_spend,
-            days_since_last=days_since_last,
-            typical_cycle=typical_cycle,
+        reason_primary, reason_secondary = format_schedule_lines(
+            cycle_days=typical_cycle,
+            day_info=day_info,
+            hour_info=hour_info,
         )
 
-        # ----------------------------------------------------
-        # Prediction status
-        # ----------------------------------------------------
-
-        if delta_to_tomorrow == 0:
-            prediction_status = "Besok"
-
-        elif abs(delta_to_tomorrow) == 1:
-            prediction_status = "Sekitar besok"
-
-        elif delta_to_tomorrow < 0:
-            prediction_status = "Sudah lewat"
-
-        elif delta_to_tomorrow <= 3:
-            prediction_status = "Segera"
-
-        else:
-            prediction_status = "Belum"
-
-        # ----------------------------------------------------
-        # Reason
-        # ----------------------------------------------------
-
-        if prediction_status == "Besok":
-            reason = (
-                f"Biasanya kembali setiap "
-                f"{typical_cycle} hari."
-            )
-
-        elif prediction_status == "Sekitar besok":
-            if delta_to_tomorrow < 0:
-                reason = (
-                    f"Estimasi kembali "
-                    f"{abs(delta_to_tomorrow)} hari lalu."
-                )
-            else:
-                reason = (
-                    f"Estimasi kembali "
-                    f"{delta_to_tomorrow} hari setelah besok."
-                )
-
-        elif prediction_status == "Sudah lewat":
-            reason = (
-                f"Sudah melewati estimasi siklus "
-                f"{typical_cycle} hari."
-            )
-
-        elif prediction_status == "Segera":
-            reason = (
-                f"Estimasi kembali "
-                f"{predicted_return_date.isoformat()}."
-            )
-
-        else:
-            reason = (
-                f"Estimasi kembali "
-                f"{predicted_return_date.isoformat()}."
-            )
-
-        confidence_level = _get_confidence_level(
-            transaction_count=total_tx,
-            cycle_deviation=cycle_deviation,
-        )
+        confidence_level = _get_confidence_level(total_tx, cycle_deviation)
 
         predictions.append({
-            "customer_id": last_transaction.get(
-                "customer_id"
-            ),
-
-            "name": last_transaction["name"],
-            "phone": last_transaction["phone"],
-
+            "customer_code": last_tx["customer_code"],
+            "name": last_tx["name"],
+            "phone": last_tx["phone"],
             "tag": tag,
-
-            # SCORE, bukan probability.
             "score": score,
-
-            "reason": reason,
-
-            "prediction_status": prediction_status,
-            "prediction_date": (
-                predicted_return_date.isoformat()
-            ),
-
-            "last_transaction": (
-                last_tx_date.isoformat()
-            ),
-
-            "days_since_last": round(
-                days_since_last,
-                1,
-            ),
-
+            "reason": reason_primary,
+            "reason_secondary": reason_secondary,
+            "prediction_status": "Besok" if delta_to_tomorrow == 0 else "Sekitar besok",
+            "prediction_date": predicted_date.isoformat(),
+            "last_transaction": last_tx_date.isoformat(),
+            "days_since_last": round(days_since_last, 1),
             "cycle_days": typical_cycle,
-
-            "cycle_deviation": round(
-                cycle_deviation,
-                2,
-            ),
-
+            "cycle_deviation": round(cycle_deviation, 2),
             "transaction_count": total_tx,
-
-            "total_spend": round(
-                total_spend
-            ),
-
-            "est_spend": avg_spend,
-
+            "total_spend": round(total_spend),
+            "avg_spend": avg_spend,
+            "est_spend": est_spend,
             "favorite_service": favorite_service,
-
-            "contribution_percent": (
-                contribution_pct
-            ),
-
-            # Backward compatibility dengan
-            # versi kode sebelumnya.
-            "contribution": (
-                f"{contribution_pct}%"
-            ),
-
+            "contribution_percent": contribution_pct,
+            "contribution": f"{contribution_pct}%",
             "confidence_level": confidence_level,
+            "pattern_multiplier": round(pattern_multiplier, 2),
         })
 
-    # ========================================================
-    # 5. TOP PREDICTIONS
-    # ========================================================
-    #
-    # Ambil customer yang predicted return date:
-    #   tepat besok
-    #   atau maksimal +/- 1 hari
-    #
-    # Prioritas:
-    #   1. score
-    #   2. histori transaksi
-    #   3. total spending
-    #
-
-    filtered_predictions = [
-        prediction
-        for prediction in predictions
-        if prediction["prediction_status"]
-        in {"Besok", "Sekitar besok"}
-        and prediction["score"] >= 70
-    ]
-
-    filtered_predictions.sort(
-        key=lambda x: (
-            x["score"],
-            x["transaction_count"],
-            x["total_spend"],
-        ),
+    # 5. Sort & limit
+    predictions.sort(
+        key=lambda x: (x["score"], x["transaction_count"], x["total_spend"]),
         reverse=True,
     )
-
-    top_predictions = (
-        filtered_predictions[
-            :TOP_PREDICTIONS_LIMIT
-        ]
-    )
-
-    # ========================================================
-    # 6. RESULT
-    # ========================================================
+    top_predictions = predictions[:TOP_PREDICTIONS_LIMIT]
 
     return {
         "top_services": top_services_summary,
-
         "predictions": top_predictions,
-
         "metadata": {
             "total_orders": len(orders),
             "total_customers": len(customer_map),
             "customers_analyzed": len(predictions),
+            "customers_shown": len(top_predictions),
+            "skipped": skipped[:15],
             "prediction_date": tomorrow.isoformat(),
-            "algorithm": "median-cycle-v3",
+            "timezone": timezone_str,
+            "now_utc": now_utc.isoformat(),
+            "now_local": now_local.isoformat() if now_local else None,
+            "algorithm": "median-cycle-v4.7",
         },
     }
-
-

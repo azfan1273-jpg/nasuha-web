@@ -1,0 +1,98 @@
+<div style="max-width: 1200px; margin: 0 auto; padding: 16px; color: #fff; display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- HEADER: Sapaan + Tanggal/Jam -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+    <div>
+      <h1 id="clay-greeting" style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #ffffff;">Halo 👋</h1>
+      <p id="clay-datetime" style="margin: 4px 0 0 0; font-size: 0.85rem; color: #8a8a93; text-transform: capitalize;">Memuat waktu toko...</p>
+    </div>
+    <span style="background: rgba(0,136,255,0.15); border: 1px solid rgba(0,136,255,0.4); color: #28c8ff; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; flex-shrink: 0;">
+      Clay Engine v4.7
+    </span>
+  </div>
+
+  <!-- KPI GRID -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+
+    <div style="background: #1c1c1e; padding: 16px; border-radius: 12px; border: 1px solid #2c2c2e; border-left: 4px solid #00E676; display: flex; align-items: center; gap: 14px;">
+      <div style="font-size: 1.8rem; line-height: 1;">🔮</div>
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <span style="font-size: 0.78rem; color: #8a8a93;">Prediksi Besok</span>
+        <div id="clay-kpi-predict" style="font-size: 1.35rem; font-weight: 700; color: #00E676; line-height: 1.2;">—</div>
+        <small style="font-size: 0.72rem; color: #666;">pelanggan</small>
+      </div>
+    </div>
+
+    <div style="background: #1c1c1e; padding: 16px; border-radius: 12px; border: 1px solid #2c2c2e; border-left: 4px solid #28c8ff; display: flex; align-items: center; gap: 14px;">
+      <div style="font-size: 1.8rem; line-height: 1;">🎯</div>
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <span style="font-size: 0.78rem; color: #8a8a93;">Akurasi 7 Hari</span>
+        <div id="clay-kpi-accuracy" style="font-size: 1.35rem; font-weight: 700; color: #28c8ff; line-height: 1.2;">—</div>
+        <small id="clay-kpi-accuracy-sub" style="font-size: 0.72rem; color: #666;">memuat...</small>
+      </div>
+    </div>
+
+    <div style="background: #1c1c1e; padding: 16px; border-radius: 12px; border: 1px solid #2c2c2e; border-left: 4px solid #ff9800; display: flex; align-items: center; gap: 14px;">
+      <div style="font-size: 1.8rem; line-height: 1;">⏭️</div>
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <span style="font-size: 0.78rem; color: #8a8a93;">Skipped Hari Ini</span>
+        <div id="clay-kpi-skipped" style="font-size: 1.35rem; font-weight: 700; color: #ff9800; line-height: 1.2;">—</div>
+        <small style="font-size: 0.72rem; color: #666;">tidak eligible</small>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FITUR GRID -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 600; color: #ffffff;">Fitur Clay Engine</h3>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
+
+      <div id="clay-card-predict" role="button" tabindex="0"
+        style="position: relative; background: #1c1c1e; border: 1px solid #2c2c2e; border-radius: 14px; padding: 20px 18px 18px 18px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; cursor: pointer; transition: all 0.15s;">
+        <div style="font-size: 2rem; line-height: 1;">🔮</div>
+        <h4 style="margin: 6px 0 2px 0; font-size: 1rem; font-weight: 600; color: #ffffff;">Predict Tomorrow</h4>
+        <p style="margin: 0; font-size: 0.82rem; color: #8a8a93; line-height: 1.4; flex: 1;">Prediksi kedatangan pelanggan untuk besok hari.</p>
+        <span style="align-self: flex-start; font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 10px; background: rgba(0,230,118,0.15); color: #00E676; border: 1px solid rgba(0,230,118,0.35);">Aktif</span>
+      </div>
+
+      <div style="position: relative; background: #1c1c1e; border: 1px solid #2c2c2e; border-radius: 14px; padding: 20px 18px 18px 18px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; opacity: 0.55;">
+        <div style="font-size: 2rem; line-height: 1;">🚨</div>
+        <h4 style="margin: 6px 0 2px 0; font-size: 1rem; font-weight: 600; color: #ffffff;">Churn Engine</h4>
+        <p style="margin: 0; font-size: 0.82rem; color: #8a8a93; line-height: 1.4; flex: 1;">Deteksi pelanggan berisiko churn.</p>
+        <span style="align-self: flex-start; font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 10px; background: rgba(255,193,7,0.12); color: #ffc107; border: 1px solid rgba(255,193,7,0.3);">Coming Soon</span>
+      </div>
+
+      <div style="position: relative; background: #1c1c1e; border: 1px solid #2c2c2e; border-radius: 14px; padding: 20px 18px 18px 18px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; opacity: 0.55;">
+        <div style="font-size: 2rem; line-height: 1;">➕</div>
+        <h4 style="margin: 6px 0 2px 0; font-size: 1rem; font-weight: 600; color: #ffffff;">Slot 3</h4>
+        <p style="margin: 0; font-size: 0.82rem; color: #8a8a93; line-height: 1.4; flex: 1;">Fitur baru dalam pengembangan.</p>
+        <span style="align-self: flex-start; font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 10px; background: rgba(255,193,7,0.12); color: #ffc107; border: 1px solid rgba(255,193,7,0.3);">Coming Soon</span>
+      </div>
+
+      <div style="position: relative; background: #1c1c1e; border: 1px solid #2c2c2e; border-radius: 14px; padding: 20px 18px 18px 18px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; opacity: 0.55;">
+        <div style="font-size: 2rem; line-height: 1;">➕</div>
+        <h4 style="margin: 6px 0 2px 0; font-size: 1rem; font-weight: 600; color: #ffffff;">Slot 4</h4>
+        <p style="margin: 0; font-size: 0.82rem; color: #8a8a93; line-height: 1.4; flex: 1;">Fitur baru dalam pengembangan.</p>
+        <span style="align-self: flex-start; font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 10px; background: rgba(255,193,7,0.12); color: #ffc107; border: 1px solid rgba(255,193,7,0.3);">Coming Soon</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<style>
+  /* Hover khusus (inline gak bisa nampung :hover) */
+  #clay-card-predict:hover {
+    transform: translateY(-3px);
+    border-color: #28c8ff !important;
+    background: #202024 !important;
+    box-shadow: 0 8px 22px rgba(40, 200, 255, 0.15);
+  }
+  #clay-card-predict:focus {
+    outline: 2px solid #28c8ff;
+    outline-offset: 2px;
+  }
+</style>

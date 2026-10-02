@@ -1,47 +1,155 @@
-<div class="clay-engine-container">
-  <div class="section-header">
-    <h2>AI Customer Insight Engine</h2>
-    <span class="badge badge-info" style="background-color: #0088ff;">Clay Engine Active</span>
+<div style="padding: 16px; color: #fff; max-width: 1400px; margin: 0 auto;">
+
+  <!-- ============ HEADER ============ -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <button id="btn-back-home" 
+        style="background: transparent; border: 1px solid #3a3a3e; color: #ccc; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-bottom: 10px;">
+        ← Kembali
+      </button>
+      <h2 style="margin: 0; font-size: 1.4rem; font-weight: 700; color: #fff;">
+        🔮 Predict Tomorrow
+      </h2>
+      <p id="clay-engine-date" style="margin: 4px 0 0 0; font-size: 0.85rem; color: #8a8a93;">
+        Memuat tanggal...
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <button id="btn-refresh-clay"
+        style="background: #2a2a2e; border: 1px solid #3a3a3e; color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.8rem;">
+        🔄 Refresh Data
+      </button>
+      <span style="background: rgba(0,136,255,0.15); border: 1px solid rgba(0,136,255,0.4); color: #28c8ff; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+        Clay Engine v4.7
+      </span>
+    </div>
   </div>
 
-  <!-- Summary Cards -->
-  <div class="stats-grid" style="margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-    <div class="stat-card" style="background: #252528; padding: 14px; border-radius: 10px; border-left: 4px solid #00E676;">
-      <span class="stat-label" style="font-size: 0.8rem; color: #aaa;">Potensi Masuk</span>
-      <div id="stat-total-potensial" style="font-size: 1.3rem; font-weight: bold; color: #00E676; margin-top: 4px;">0 Pelanggan</div>
-      <small style="color: #666; font-size: 0.75rem;">Prediksi Akurasi AI 90%+</small>
+  <!-- ============ KPI ============ -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px;">
+    <div style="background: #1c1c1e; padding: 16px; border-radius: 12px; border: 1px solid #2c2c2e; border-left: 4px solid #00E676;">
+      <span style="font-size: 0.8rem; color: #8a8a93;">Target Besok (Normal)</span>
+      <div id="stat-total-potensial" style="font-size: 1.4rem; font-weight: 700; color: #00E676; margin-top: 6px;">0 Pelanggan</div>
+    </div>
+    <div style="background: #1c1c1e; padding: 16px; border-radius: 12px; border: 1px solid #2c2c2e; border-left: 4px solid #ff9800;">
+      <span style="font-size: 0.8rem; color: #8a8a93;">Carry Over</span>
+      <div id="stat-total-carry-over" style="font-size: 1.4rem; font-weight: 700; color: #ff9800; margin-top: 6px;">0 Pelanggan</div>
+    </div>
+    <div style="background: #1c1c1e; padding: 16px; border-radius: 12px; border: 1px solid #2c2c2e; border-left: 4px solid #ffc107;">
+      <span style="font-size: 0.8rem; color: #8a8a93;">Total Proyeksi Omset</span>
+      <div id="stat-total-omset" style="font-size: 1.4rem; font-weight: 700; color: #ffc107; margin-top: 6px;">Rp 0</div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 1: PREDICT TOMORROW ============ -->
+  <div style="margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <h3 style="margin: 0; font-size: 1.1rem; color: #fff; font-weight: 600;">
+        🎯 Prediksi kedatangan pelanggan besok
+      </h3>
+      <span id="badge-count-normal" style="font-size: 0.75rem; background: #2c2c2e; color: #ccc; padding: 4px 10px; border-radius: 12px;">
+        0 items
+      </span>
     </div>
 
-    <div class="stat-card" style="background: #252528; padding: 14px; border-radius: 10px; border-left: 4px solid #ffc107;">
-      <span class="stat-label" style="font-size: 0.8rem; color: #aaa;">Proyeksi Kas</span>
-      <div id="stat-total-omset" style="font-size: 1.3rem; font-weight: bold; color: #ffc107; margin-top: 4px;">Rp 0</div>
-      <small style="color: #666; font-size: 0.75rem;">Estimasi Esok Hari</small>
+    <div style="background: #1c1c1e; border: 1px solid #333338; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.35); overflow: hidden;">
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #141416;">
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem; width: 50px;">No</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Nama Pelanggan</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Status</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Skor</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Siklus</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Code Pelanggan</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">No HP</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; color: #a1a1aa; font-weight: 600; font-size: 0.82rem; text-align: center; width: 90px;">WA</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-predict">
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 24px; color: #888;">Memuat data prediksi...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <h3 style="margin-top: 24px; font-size: 1rem; color: #fff;">Prediksi Pelanggan Datang Esok Hari</h3>
-  <p style="color: #888; font-size: 0.8rem; margin-bottom: 12px;">Geser tabel ke kanan untuk melihat status RFM & tombol Follow Up WA</p>
+  <!-- ============ SECTION 2: CARRY OVER ============ -->
+  <div style="margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <h3 style="margin: 0; font-size: 1.1rem; color: #ffb74d; font-weight: 600;">
+        🚨 Carry Over (Ketinggalan / Belum Datang)
+      </h3>
+      <span id="badge-count-carry" style="font-size: 0.75rem; background: rgba(255,152,0,0.15); color: #ff9800; border: 1px solid rgba(255,152,0,0.3); padding: 4px 10px; border-radius: 12px;">
+        0 items
+      </span>
+    </div>
 
-  <!-- Container Tabel (Tampilan Mirip Frozen Column Flutter) -->
-  <div class="table-card" style="overflow-x: auto; background: #2A2A2E; border-radius: 10px; border: 1px solid #333;">
-    <table class="custom-table" style="width: 100%; min-width: 800px; border-collapse: collapse;">
-      <thead>
-        <tr style="background: #252528; text-align: left; color: #aaa; font-size: 0.8rem;">
-          <th style="padding: 12px;">Pelanggan</th>
-          <th style="padding: 12px;">Skor AI</th>
-          <th style="padding: 12px;">Analisis Siklus</th>
-          <th style="padding: 12px;">Est. Omset</th>
-          <th style="padding: 12px;">Layanan Favorit</th>
-          <th style="padding: 12px;">Total Tx</th>
-          <th style="padding: 12px;">Kontribusi</th>
-          <th style="padding: 12px; text-align: center;">Follow-Up</th>
-        </tr>
-      </thead>
-      <tbody id="clay-table-body">
-        <tr>
-          <td colspan="8" style="text-align: center; padding: 20px; color: #888;">Memuat prediksi data...</td>
-        </tr>
-      </tbody>
-    </table>
+    <div style="background: #1c1c1e; border: 1px solid #333338; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.35); overflow: hidden;">
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #141416;">
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem; width: 50px;">No</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Nama Pelanggan</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Status</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Carry Over</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Skor</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Siklus</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">No HP</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; border-right: 1px solid #333338; color: #a1a1aa; font-weight: 600; font-size: 0.82rem;">Alasan</th>
+              <th style="padding: 12px 14px; border-bottom: 2px solid #3f3f46; color: #a1a1aa; font-weight: 600; font-size: 0.82rem; text-align: center; width: 90px;">WA</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-carry">
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 24px; color: #888;">Memuat data carry over...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-</div>
+
+  <!-- ============ SECTION 3: HISTORY PREDIKSI ============ -->
+  <div style="margin-bottom: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+      <h3 style="margin: 0; font-size: 1.1rem; color: #fff; font-weight: 600;">
+        📜 History Prediksi
+      </h3>
+      <span style="font-size: 0.72rem; color: #8a8a93;">
+        Kumulatif per pelanggan · dari awal sampai sekarang
+      </span>
+    </div>
+
+    <div style="background: #1c1c1e; border: 1px solid #333338; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.35); overflow: hidden;">
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #141416;">
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; border-right:1px solid #333338; color:#a1a1aa; font-weight:600; font-size:0.82rem; width:80px;">Tanggal</th>
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; border-right:1px solid #333338; color:#a1a1aa; font-weight:600; font-size:0.82rem;">Nama</th>
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; border-right:1px solid #333338; color:#a1a1aa; font-weight:600; font-size:0.82rem; width:90px;">Akurasi</th>
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; border-right:1px solid #333338; color:#a1a1aa; font-weight:600; font-size:0.82rem; width:70px;">Total</th>
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; border-right:1px solid #333338; color:#00E676; font-weight:600; font-size:0.82rem; width:60px;">HIT</th>
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; border-right:1px solid #333338; color:#ff5252; font-weight:600; font-size:0.82rem; width:70px;">MISS</th>
+              <th style="padding:12px 14px; border-bottom:2px solid #3f3f46; color:#ffb74d; font-weight:600; font-size:0.82rem; width:160px;">Carry Over</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-history">
+            <tr><td colspan="7" style="text-align:center; padding:24px; color:#888;">Memuat history prediksi...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="btn-history-loadmore-wrap" style="text-align:center; padding:12px; border-top:1px solid #27272a; display:none;">
+        <button id="btn-history-loadmore"
+          style="background:#2a2a2e; border:1px solid #3a3a3e; color:#ccc; padding:8px 20px; border-radius:8px; cursor:pointer; font-size:0.8rem;">
+          Muat Lebih
+        </button>
+      </div>
+    </div>
+  </div>

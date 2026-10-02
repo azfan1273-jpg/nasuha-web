@@ -107,7 +107,7 @@ def verify_user_jwt(token: str) -> dict:
             algorithms=["HS256"],
             audience="authenticated",
             options={"require": ["exp"]},
-            leeway=30,
+            leeway=120,
         )
     # ------------------------------------------------------------------
     # 3. Kalau ES256/RS256, fetch JWKS manual (bypass PyJWKClient)
@@ -167,5 +167,5 @@ def verify_user_jwt(token: str) -> dict:
         issuer=iss,
         audience="authenticated",
         options={"require": ["exp"]},
-        leeway=30,
+        leeway=120,
     )

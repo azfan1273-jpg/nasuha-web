@@ -5,6 +5,11 @@ Konsisten dengan engine:
     - Skip BATAL/CANCEL (pakai is_cancelled_order dari order_utils)
     - Keep SELESAI + PROSES + Antrian
     - Dedup: 1 customer × 1 hari = 1 kunjungan
+
+Update v2:
+    - Fix kolom: order_date → created_at (sesuai skema DB aktual).
+    - Timezone-aware: range filter & parse date pakai zona toko.
+    - Pakai resolve_timezone() biar support alias (WIB/WITA/WIT).
 """
 
 import logging
@@ -13,26 +18,48 @@ from zoneinfo import ZoneInfo
 
 from services.shared.order_utils import is_cancelled_order
 from services.shared.supabase_user_client import get_user_client
+from services.shared.datetime_utils import resolve_timezone
 
 logger = logging.getLogger(__name__)
 
 VERDICT_DELAY_DAYS = 1
 
 
-def _parse_order_date(order: dict) -> date | None:
-    raw = order.get("order_date") or order.get("created_at")
+def _parse_order_date(order: dict, tz: ZoneInfo) -> date | None:
+    """Parse created_at (UTC) → date di zona toko."""
+    raw = order.get("created_at") or order.get("order_date")
     if not raw:
         return None
+
     if isinstance(raw, str):
         try:
-            return datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
         except ValueError:
             return None
-    if isinstance(raw, datetime):
-        return raw.date()
-    if isinstance(raw, date):
+    elif isinstance(raw, datetime):
+        dt = raw
+    elif isinstance(raw, date):
         return raw
-    return None
+    else:
+        return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(tz).date()
+
+
+def _local_date_to_utc_range(d: date, tz: ZoneInfo) -> tuple[str, str]:
+    """
+    Konversi 1 hari lokal (00:00-23:59 toko) → range UTC ISO string.
+    Return: (start_utc_iso, end_utc_iso) — end eksklusif.
+    """
+    start_local = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=tz)
+    end_local = start_local + timedelta(days=1)
+    return (
+        start_local.astimezone(timezone.utc).isoformat(),
+        end_local.astimezone(timezone.utc).isoformat(),
+    )
 
 
 def evaluate_predictions(token: str, store_id: str, timezone_str: str) -> dict:
@@ -42,9 +69,13 @@ def evaluate_predictions(token: str, store_id: str, timezone_str: str) -> dict:
     Args:
         token: JWT user (TANPA "Bearer ").
         store_id: UUID toko (dari JWT).
-        timezone_str: IANA timezone toko.
+        timezone_str: IANA timezone toko ATAU alias (WIB/WITA/WIT).
     """
-    tz = ZoneInfo(timezone_str)
+    tz = resolve_timezone(timezone_str)
+    if tz is None:
+        logger.error("ZoneInfo tidak tersedia, fallback ke UTC untuk evaluasi")
+        tz = timezone.utc
+
     today_local = datetime.now(tz).date()
     cutoff = today_local - timedelta(days=VERDICT_DELAY_DAYS)
 
@@ -91,17 +122,20 @@ def evaluate_predictions(token: str, store_id: str, timezone_str: str) -> dict:
     if not customer_codes or not target_dates:
         return empty_summary
 
-    min_date = min(target_dates).isoformat()
-    max_date = max(target_dates).isoformat()
+    # Range tanggal lokal → UTC (timezone-aware)
+    min_date_local = min(target_dates)
+    max_date_local = max(target_dates)
+    min_dt_utc, _ = _local_date_to_utc_range(min_date_local, tz)
+    _, max_dt_utc = _local_date_to_utc_range(max_date_local, tz)
 
     try:
         orders_res = (
             supabase.table("orders")
-            .select("id, customer_code, order_date, status")
+            .select("id, customer_code, created_at, status")
             .eq("store_id", store_id)
             .in_("customer_code", customer_codes)
-            .gte("order_date", min_date)
-            .lte("order_date", max_date)
+            .gte("created_at", min_dt_utc)
+            .lt("created_at", max_dt_utc)
             .execute()
         )
     except Exception:
@@ -115,7 +149,7 @@ def evaluate_predictions(token: str, store_id: str, timezone_str: str) -> dict:
     for o in raw_orders:
         if is_cancelled_order(o):
             continue
-        d = _parse_order_date(o)
+        d = _parse_order_date(o, tz)
         code = o.get("customer_code")
         if not d or not code:
             continue

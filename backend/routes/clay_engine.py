@@ -78,12 +78,15 @@ def _predict_for_store(auth_header: str, store_id: str, evaluate_first: bool = T
     token_str = auth_header.replace("Bearer ", "", 1).strip()
 
     # ---- Evaluasi log lama (matang) sebelum generate baru ----
+    eval_debug = None
     if evaluate_first:
         try:
             eval_summary = evaluate_predictions(token_str, store_id, timezone_str)
-            logger.info("Evaluate store %s: %s", store_id, eval_summary)
-        except Exception:
-            logger.exception("Evaluate gagal untuk store %s, lanjut generate", store_id)
+            eval_debug = eval_summary
+            logger.warning("Evaluate store %s: %s", store_id, eval_summary)
+        except Exception as e:
+            eval_debug = {"error": f"{type(e).__name__}: {e}"}
+            logger.exception("Evaluate gagal untuk store %s", store_id)
 
     # ---- Ambil orders + order_items ----
     orders_url = (
@@ -146,6 +149,7 @@ def _predict_for_store(auth_header: str, store_id: str, evaluate_first: bool = T
         "top_services": top_services,
         "metadata": metadata,
         "timezone": timezone_str,
+        "eval_debug": eval_debug,   # ← tambahin ini
     }
 
 # ---------------------------------------------------------------------------

@@ -138,6 +138,27 @@ def build_carry_over_predictions(
         if code:
             hit_codes.add(code)
 
+    # ===== STEP 2b: Ambil customer_code yang order HARI INI =====
+    today_start_utc, today_end_utc = _day_range_utc(today_local, tz)
+    
+    today_orders_res = (
+        supabase.table("orders")
+        .select("customer_code, status")
+        .eq("store_id", store_id)
+        .in_("customer_code", codes)
+        .gte("created_at", today_start_utc)
+        .lt("created_at", today_end_utc)
+        .execute()
+    )
+    
+    today_codes = set()
+    for o in today_orders_res.data or []:
+        if is_cancelled_order(o):
+            continue
+        code = o.get("customer_code")
+        if code:
+            today_codes.add(code)        
+
     # ===== STEP 3: Filter kandidat carry over =====
     carry_over_payloads = []
     seen_codes = set()
@@ -150,6 +171,10 @@ def build_carry_over_predictions(
 
         # Skip kalau udah order H-1 (HIT)
         if code in hit_codes:
+            continue
+
+        # Skip kalau udah order HARI INI (udah dateng, nggak perlu diingetin)
+        if code in today_codes:
             continue
 
         # Skip kalau udah ada di normal predictions hari ini (anti-dobel)

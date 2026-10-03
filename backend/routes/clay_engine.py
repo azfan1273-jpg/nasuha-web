@@ -57,13 +57,14 @@ def _client_ip(request: Request) -> str:
 # ===========================================================================
 # CORE LOGIC — generate + log prediksi untuk 1 store
 # ===========================================================================
-def _predict_for_store(auth_header: str, store_id: str) -> dict:
+def _predict_for_store(auth_header: str, store_id: str, evaluate_first: bool = True) -> dict:
     """
     Generate + log prediksi untuk 1 store.
 
     Args:
         auth_header: "Bearer <jwt_user>" ATAU "Bearer <service_role_key>"
         store_id: UUID toko
+        evaluate_first: Kalau True, evaluasi log lama (matang) sebelum generate
 
     Return: dict detail (predictions, carry_over, top_services, metadata, ...)
     """
@@ -73,6 +74,16 @@ def _predict_for_store(auth_header: str, store_id: str) -> dict:
         sid = sanitize_filter_value(store_id)
     except ValueError:
         raise RuntimeError("store_id tidak valid")
+
+    token_str = auth_header.replace("Bearer ", "", 1).strip()
+
+    # ---- Evaluasi log lama (matang) sebelum generate baru ----
+    if evaluate_first:
+        try:
+            eval_summary = evaluate_predictions(token_str, store_id, timezone_str)
+            logger.info("Evaluate store %s: %s", store_id, eval_summary)
+        except Exception:
+            logger.exception("Evaluate gagal untuk store %s, lanjut generate", store_id)
 
     # ---- Ambil orders + order_items ----
     orders_url = (
@@ -114,8 +125,6 @@ def _predict_for_store(auth_header: str, store_id: str) -> dict:
         if p.get("customer_code")
     }
 
-    token_str = auth_header.replace("Bearer ", "", 1).strip()
-
     carry_over = build_carry_over_predictions(
         token=token_str,
         store_id=store_id,
@@ -138,7 +147,6 @@ def _predict_for_store(auth_header: str, store_id: str) -> dict:
         "metadata": metadata,
         "timezone": timezone_str,
     }
-
 
 # ---------------------------------------------------------------------------
 # GET /api/clay/predict-tomorrow  (JWT user)
@@ -196,7 +204,7 @@ def predict_tomorrow(request: Request, authorization: Optional[str] = Header(Non
 
     # 3. Generate
     try:
-        result = _predict_for_store(auth_header, store_id)
+        result = _predict_for_store(auth_header, store_id, evaluate_first=True)
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception:
@@ -263,7 +271,7 @@ def clay_cron_daily_run(x_cron_secret: Optional[str] = Header(None)):
     results = []
     for sid in store_ids:
         try:
-            r = _predict_for_store(auth_header, sid)
+            r = _predict_for_store(auth_header, sid, evaluate_first=True)
             results.append({
                 "store_id": sid,
                 "status": "ok",

@@ -50,9 +50,11 @@ def _build_log_row(
 def log_prediction_run(token: str, store_id: str, payload: dict) -> str | None:
     """
     Simpan 1 run + semua prediksi (normal + carry over) ke DB.
-
-    DEDUP: Kalau sudah ada run untuk (store_id, prediction_target_date)
-    yang sama → SKIP, balikin run_id lama.
+    
+    Logic:
+        - Kalau run untuk (store_id, prediction_target_date) belum ada → INSERT baru.
+        - Kalau sudah ada & semua logs masih 'pending' → UPSERT (update run, replace logs).
+        - Kalau sudah ada & ada yang hit/miss → SKIP (jangan rusak data evaluasi).
     """
     try:
         supabase = get_user_client(token)
@@ -64,7 +66,7 @@ def log_prediction_run(token: str, store_id: str, payload: dict) -> str | None:
             logger.warning("Skip log: prediction_date kosong")
             return None
 
-        # ===== CEK DULU: udah ada run hari ini? =====
+        # ===== CEK RUN YANG SUDAH ADA =====
         existing = (
             supabase.table("prediction_runs")
             .select("id")
@@ -73,15 +75,7 @@ def log_prediction_run(token: str, store_id: str, payload: dict) -> str | None:
             .limit(1)
             .execute()
         )
-        if existing.data:
-            existing_id = existing.data[0]["id"]
-            logger.info(
-                "Skip log: run untuk %s sudah ada (run_id=%s)",
-                target_date, existing_id,
-            )
-            return existing_id
 
-        # ===== INSERT RUN BARU =====
         run_row = {
             "store_id": store_id,
             "prediction_target_date": target_date,
@@ -93,19 +87,46 @@ def log_prediction_run(token: str, store_id: str, payload: dict) -> str | None:
             "customers_shown": meta.get("customers_shown"),
             "metadata": meta,
         }
-        res = supabase.table("prediction_runs").insert(run_row).execute()
-        if not res.data:
-            logger.error("Gagal insert prediction_runs: %s", res)
-            return None
 
-        run_id = res.data[0]["id"]
-
-        # ===== INSERT NORMAL PREDICTIONS =====
+        # ===== BANGUN LOG ROWS (dipakai di kedua jalur) =====
         log_rows = []
+        if existing.data:
+            run_id = existing.data[0]["id"]
+
+            # Cek status logs di run ini
+            status_check = (
+                supabase.table("prediction_logs")
+                .select("outcome_status")
+                .eq("run_id", run_id)
+                .execute()
+            )
+            statuses = [r.get("outcome_status") for r in (status_check.data or [])]
+            has_evaluated = any(s in ("hit", "miss") for s in statuses)
+
+            if has_evaluated:
+                logger.info(
+                    "Skip upsert: run %s target %s sudah ada yg dievaluasi",
+                    run_id, target_date,
+                )
+                return run_id
+
+            # ---- UPSERT: update run + replace logs ----
+            supabase.table("prediction_runs").update(run_row).eq("id", run_id).execute()
+            supabase.table("prediction_logs").delete().eq("run_id", run_id).execute()
+            logger.info("Upsert run %s target %s (replace logs)", run_id, target_date)
+        else:
+            # ---- INSERT BARU ----
+            res = supabase.table("prediction_runs").insert(run_row).execute()
+            if not res.data:
+                logger.error("Gagal insert prediction_runs: %s", res)
+                return None
+            run_id = res.data[0]["id"]
+            logger.info("Insert run baru %s target %s", run_id, target_date)
+
+        # ===== ISI LOG ROWS (dipakai untuk INSERT di kedua jalur) =====
         for idx, p in enumerate(payload.get("predictions", []), start=1):
             log_rows.append(_build_log_row(run_id, store_id, target_date, p, idx, False))
 
-        # ===== INSERT CARRY OVER =====
         carry_over = payload.get("carry_over", [])
         for idx, p in enumerate(carry_over, start=1):
             log_rows.append(_build_log_row(run_id, store_id, target_date, p, idx, True))
@@ -113,10 +134,6 @@ def log_prediction_run(token: str, store_id: str, payload: dict) -> str | None:
         if log_rows:
             try:
                 insert_res = supabase.table("prediction_logs").insert(log_rows).execute()
-                logger.info(
-                    "Run %s: logged %d normal + %d carry over",
-                    run_id, len(payload.get("predictions", [])), len(carry_over),
-                )
                 if not insert_res.data:
                     logger.error("Insert prediction_logs returned empty: %s", insert_res)
             except Exception as e:

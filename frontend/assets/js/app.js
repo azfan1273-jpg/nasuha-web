@@ -1,5 +1,10 @@
 // =====================================================
-// NASUHA LABS — APP.JS (v2 — Table Layout Clay Engine)
+// NASUHA LABS — APP.JS (v2.1 — FIXED)
+// Perbaikan:
+//   - renderPredictTable: tambah kolom "Status Nota" (9 kolom)
+//   - colspan 8 -> 9
+//   - handleUnauthorized di-define proper
+//   - guard history table (kalau HTML belum punya tbody-history)
 // =====================================================
 
 // =====================================================
@@ -26,6 +31,16 @@ async function loadComponent(elementId, filePath) {
   }
 }
 
+function handleUnauthorized(reason = "Sesi berakhir") {
+  console.warn("[auth]", reason);
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("store_id");
+  localStorage.removeItem("user_info");
+  if (typeof renderAuthState === "function") renderAuthState();
+  const lm = document.getElementById("login-modal");
+  if (lm) lm.classList.remove("hidden");
+}
+
 // =====================================================
 // INIT
 // =====================================================
@@ -35,8 +50,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadComponent("header-container", "components/header.html");
 
   renderAuthState();
-
-  // Default page = Clay Engine Home
   await loadClayHome();
 
   setupEventListeners();
@@ -157,9 +170,9 @@ async function loadClayHomeData() {
   const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
   const qs = storeId ? `?store_id=${encodeURIComponent(storeId)}` : "";
 
-  // Predict
+  // Predict today
   try {
-    const res = await fetch(`/api/clay/predict-tomorrow${qs}`, { headers });
+    const res = await fetch(`/api/clay/predict-today${qs}`, { headers });
     if (res.ok) {
       const data = await res.json();
       const preds = Array.isArray(data.predictions) ? data.predictions : [];
@@ -167,6 +180,8 @@ async function loadClayHomeData() {
       const skipped = (data.metadata && Array.isArray(data.metadata.skipped)) ? data.metadata.skipped : [];
       setKPI("clay-kpi-predict", `${preds.length + carry.length}`);
       setKPI("clay-kpi-skipped", `${skipped.length}`);
+    } else if (res.status === 401) {
+      handleUnauthorized("KPI predict: token expired");
     }
   } catch (e) {
     console.warn("KPI predict error:", e);
@@ -178,9 +193,12 @@ async function loadClayHomeData() {
     const res = await fetch(`/api/clay/history/accuracy${qs}${sep}period=7d`, { headers });
     if (res.ok) {
       const data = await res.json();
-      const acc = data.accuracy_pct ?? data.accuracy ?? data.accuracy_rate ?? data.rate ?? null;
-      const hit = data.hit ?? data.total_hit ?? null;
-      const total = data.total ?? data.evaluated ?? null;
+      // Backend clay_insight_service return shape:
+      //   { summary: { accuracy_pct, hit, miss, evaluated, total, ... }, groups: [...] }
+      const summary = data.summary || data;
+      const acc = summary.accuracy_pct ?? data.accuracy_pct ?? null;
+      const hit = summary.hit ?? data.hit ?? null;
+      const total = summary.evaluated ?? summary.total ?? data.evaluated ?? data.total ?? null;
 
       if (acc != null) setKPI("clay-kpi-accuracy", `${Number(acc).toFixed(1)}%`);
       else if (hit != null && total != null && total > 0) setKPI("clay-kpi-accuracy", `${((hit / total) * 100).toFixed(1)}%`);
@@ -190,6 +208,7 @@ async function loadClayHomeData() {
     }
   } catch (e) {
     console.warn("KPI accuracy error:", e);
+    setKPI("clay-kpi-accuracy", "—");
   }
 }
 
@@ -202,7 +221,22 @@ function setKPI(id, value) {
 // CLAY ENGINE — PREDICT PAGE (TABLE LAYOUT)
 // =====================================================
 
-async function loadClayEngineData() {
+let _clayEngineInflight = false;
+  
+  async function loadClayEngineData() {
+    if (_clayEngineInflight) {
+      console.debug("[loadClayEngineData] skip: request sebelumnya masih jalan");
+      return;
+    }
+    _clayEngineInflight = true;
+    try {
+      await _loadClayEngineDataInner();
+    } finally {
+      _clayEngineInflight = false;
+    }
+  }
+  
+  async function _loadClayEngineDataInner() {
   const tbodyPredict = document.getElementById("tbody-predict");
   const tbodyCarry = document.getElementById("tbody-carry");
   const statPotensialEl = document.getElementById("stat-total-potensial");
@@ -226,19 +260,19 @@ async function loadClayEngineData() {
     }
   }
 
-	// Bind back-to-home
-	const btnBack = document.getElementById("btn-back-home");
-	if (btnBack && !btnBack.dataset.bound) {
-	  btnBack.dataset.bound = "true";
-	  btnBack.addEventListener("click", () => {
-	   const pageTitleEl = document.getElementById("current-page-title");
-	   if (pageTitleEl) pageTitleEl.innerText = "Clay Engine";
-	   document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
-	   const clayNav = document.querySelector('.nav-item a[data-page="Clay Engine"]');
-	   if (clayNav) clayNav.parentElement.classList.add("active");
-	   loadClayHome();
-	 });
-	}
+  // Bind back-to-home
+  const btnBack = document.getElementById("btn-back-home");
+  if (btnBack && !btnBack.dataset.bound) {
+    btnBack.dataset.bound = "true";
+    btnBack.addEventListener("click", () => {
+      const pageTitleEl = document.getElementById("current-page-title");
+      if (pageTitleEl) pageTitleEl.innerText = "Clay Engine";
+      document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
+      const clayNav = document.querySelector('.nav-item a[data-page="Clay Engine"]');
+      if (clayNav) clayNav.parentElement.classList.add("active");
+      loadClayHome();
+    });
+  }
 
   // Bind refresh
   const btnRefresh = document.getElementById("btn-refresh-clay");
@@ -250,7 +284,7 @@ async function loadClayEngineData() {
     });
   }
 
-  // Bind history filter
+  // Bind history filter (kalau ada)
   document.querySelectorAll(".history-filter-btn").forEach(btn => {
     if (btn.dataset.bound) return;
     btn.dataset.bound = "true";
@@ -265,7 +299,6 @@ async function loadClayEngineData() {
       btn.style.background = "#28c8ff";
       btn.style.color = "#000";
       btn.style.border = "none";
-      
     });
   });
 
@@ -274,7 +307,7 @@ async function loadClayEngineData() {
 
   if (!token) {
     if (tbodyPredict) {
-      tbodyPredict.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#ffb74d;">Sesi habis atau belum login.</td></tr>`;
+      tbodyPredict.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#ffb74d;">Sesi habis atau belum login.</td></tr>`;
     }
     if (tbodyCarry) {
       tbodyCarry.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#ffb74d;">—</td></tr>`;
@@ -283,7 +316,7 @@ async function loadClayEngineData() {
   }
 
   try {
-    let apiUrl = "/api/clay/predict-tomorrow";
+    let apiUrl = "/api/clay/predict-today";
     if (storeId) apiUrl += `?store_id=${encodeURIComponent(storeId)}`;
 
     const response = await fetch(apiUrl, {
@@ -292,11 +325,9 @@ async function loadClayEngineData() {
     });
 
     if (response.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_info");
-      renderAuthState();
+      handleUnauthorized("Predict page: token expired");
       if (tbodyPredict) {
-        tbodyPredict.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#ff5252;">🔒 Sesi berakhir. Silakan login ulang.</td></tr>`;
+        tbodyPredict.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#ff5252;">🔒 Sesi berakhir. Silakan login ulang.</td></tr>`;
       }
       return;
     }
@@ -323,13 +354,12 @@ async function loadClayEngineData() {
     renderCarryOverTable(carryOvers);
     bindWaButtons();
 
-    // Load history juga
     loadClayHistory();
 
   } catch (error) {
     console.error("Clay Engine Error:", error);
     if (tbodyPredict) {
-      tbodyPredict.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#ff5252;">Error: ${escHTML(error.message)}</td></tr>`;
+      tbodyPredict.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff5252;">Error: ${escHTML(error.message)}</td></tr>`;
     }
     if (tbodyCarry) {
       tbodyCarry.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff5252;">—</td></tr>`;
@@ -344,6 +374,8 @@ async function loadClayEngineData() {
 function getTagStyle(tag) {
   const colors = {
     "VIP":          { bg: "rgba(255,193,7,0.15)",  color: "#ffc107", border: "#ffc107" },
+    "VVIP":         { bg: "rgba(255,193,7,0.20)",  color: "#ffb300", border: "#ffb300" },
+    "Best":         { bg: "rgba(156,39,176,0.15)", color: "#ce93d8", border: "#ce93d8" },
     "Resiko Churn": { bg: "rgba(255,82,82,0.15)",  color: "#ff5252", border: "#ff5252" },
     "Reguler":      { bg: "rgba(40,200,255,0.12)", color: "#28c8ff", border: "#28c8ff" },
   };
@@ -363,7 +395,7 @@ function getCarryBadge(count) {
 }
 
 // =====================================================
-// RENDER — TABLE PREDICT
+// RENDER — TABLE PREDICT (9 kolom, sesuai header HTML)
 // =====================================================
 
 function renderPredictTable(items) {
@@ -371,7 +403,7 @@ function renderPredictTable(items) {
   if (!tbody) return;
 
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#888;">Tidak ada prediksi pelanggan untuk besok hari.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#888;">Tidak ada prediksi pelanggan untuk hari ini.</td></tr>`;
     return;
   }
 
@@ -382,8 +414,16 @@ function renderPredictTable(items) {
     const tag = item.tag || "Reguler";
     const score = Number(item.score) || 0;
     const cycle = item.cycle_days ? `${Math.round(item.cycle_days)} hari` : "-";
+    const statusNota = item.prediction_status || "active";
     const tagStyle = getTagStyle(tag);
     const scoreColor = getScoreColor(score);
+
+    // Warna badge status nota
+    let statusColor = "#28c8ff";
+    if (statusNota === "Besok") statusColor = "#00E676";
+    else if (statusNota === "Sekitar besok") statusColor = "#ffc107";
+    else if (statusNota === "Telat") statusColor = "#ff9800";
+    else if (statusNota === "active") statusColor = "#8a8a93";
 
     return `
       <tr style="border-bottom: 1px solid #27272a;">
@@ -392,6 +432,7 @@ function renderPredictTable(items) {
         <td style="padding: 12px 14px; border-right: 1px solid #27272a;">
           <span style="background:${tagStyle.bg}; color:${tagStyle.color}; border:1px solid ${tagStyle.border}; padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:600;">${escHTML(tag)}</span>
         </td>
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color: ${statusColor}; font-size: 0.8rem; font-weight: 600;">${escHTML(statusNota)}</td>
         <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:${scoreColor}; font-weight:700; font-size:0.9rem;">${score}%</td>
         <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:#ccc; font-size:0.83rem;">${cycle}</td>
         <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:#28c8ff; font-family: monospace; font-size:0.8rem;">${escHTML(code)}</td>
@@ -458,118 +499,19 @@ function renderCarryOverTable(items) {
 }
 
 // =====================================================
-// HISTORY PREDIKSI — ROBUST VERSION
+// HISTORY PREDIKSI
 // =====================================================
-
-function _num(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function _acc(hit, miss, pctFallback) {
-  if (pctFallback != null && Number.isFinite(Number(pctFallback))) {
-    return Number(pctFallback);
-  }
-  const evaluated = hit + miss;
-  return evaluated > 0 ? (hit / evaluated) * 100 : 0;
-}
-
-function normalizeHistoryRows(data, period) {
-  if (!data || typeof data !== "object") return [];
-
-  // ---- Case A: ada `groups` (object key = tanggal) ----
-  // ---- Case A0: groups = array of precomputed objects (format backend skrg) ----
-  if (Array.isArray(data.groups)) {
-    return data.groups.map(g => {
-      const hit = _num(g.hit);
-      const miss = _num(g.miss);
-      const pending = _num(g.pending);
-      const total = _num(g.total) || (hit + miss + pending);
-      return {
-        date: g.target_date || g.date_label || "-",
-        total, hit, miss, pending,
-        accuracy: _acc(hit, miss, g.accuracy_pct),
-      };
-    });
-  }
-
-  const groups = data.groups;
-  if (groups && typeof groups === "object" && !Array.isArray(groups)) {
-    const rows = Object.keys(groups).map(dateKey => {
-      const val = groups[dateKey];
-
-      // A1: value = array of logs
-      if (Array.isArray(val)) {
-        const total = val.length;
-        const hit = val.filter(i => (i.outcome_status || i.status) === "hit").length;
-        const miss = val.filter(i => (i.outcome_status || i.status) === "miss").length;
-        const pending = val.filter(i => (i.outcome_status || i.status) === "pending").length;
-        return { date: dateKey, total, hit, miss, pending, accuracy: _acc(hit, miss) };
-      }
-
-      // A2: value = precomputed object
-      if (val && typeof val === "object") {
-        const hit = _num(val.hit);
-        const miss = _num(val.miss);
-        const pending = _num(val.pending);
-        const total = _num(val.total) || (hit + miss + pending);
-        return {
-          date: dateKey,
-          total, hit, miss, pending,
-          accuracy: _acc(hit, miss, val.accuracy_pct ?? val.accuracy),
-        };
-      }
-
-      return null;
-    }).filter(Boolean);
-
-    if (rows.length > 0) {
-      return rows.sort((a, b) => (a.date < b.date ? 1 : -1));
-    }
-  }
-
-  // ---- Case B: array bentuk lain ----
-  const arr = Array.isArray(data) ? data
-    : Array.isArray(data.blocks) ? data.blocks
-    : Array.isArray(data.daily) ? data.daily
-    : Array.isArray(data.data) ? data.data
-    : [];
-
-  if (arr.length > 0) {
-    return arr.map(b => {
-      const hit = _num(b.hit);
-      const miss = _num(b.miss);
-      const pending = _num(b.pending);
-      return {
-        date: b.date || b.target_date || b.prediction_target_date || "-",
-        total: _num(b.total) || (hit + miss + pending),
-        hit, miss, pending,
-        accuracy: _acc(hit, miss, b.accuracy_pct ?? b.accuracy),
-      };
-    });
-  }
-
-  // ---- Case C: summary global (fallback) ----
-  if (data.total != null || data.hit != null || data.miss != null) {
-    const hit = _num(data.hit);
-    const miss = _num(data.miss);
-    const pending = _num(data.pending);
-    return [{
-      date: `Semua (${period})`,
-      total: _num(data.total) || (hit + miss + pending),
-      hit, miss, pending,
-      accuracy: _acc(hit, miss, data.accuracy_pct ?? data.accuracy),
-    }];
-  }
-
-  return [];
-}
 
 async function loadClayHistory() {
   const tbody = document.getElementById("tbody-history");
   const btnWrap = document.getElementById("btn-history-loadmore-wrap");
   const btnLoadMore = document.getElementById("btn-history-loadmore");
-  if (!tbody) return;
+
+  // Guard: kalau HTML belum punya table history, skip aja
+  if (!tbody) {
+    console.debug("[loadClayHistory] tbody-history tidak ada di DOM, skip.");
+    return;
+  }
 
   tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#888;">Memuat history...</td></tr>`;
   if (btnWrap) btnWrap.style.display = "none";
@@ -590,7 +532,7 @@ async function loadClayHistory() {
 
     if (res.status === 401) {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ff5252;">🔒 Sesi berakhir. Silakan login ulang.</td></tr>`;
-      if (typeof handleUnauthorized === "function") handleUnauthorized("Token expired di loadClayHistory");
+      handleUnauthorized("loadClayHistory: token expired");
       return;
     }
 
@@ -607,7 +549,7 @@ async function loadClayHistory() {
       return;
     }
 
-    // ---- Flatten semua prediksi dari semua tanggal ----
+    // Flatten semua prediksi dari semua tanggal
     const allItems = [];
     groups.forEach(g => {
       (g.predictions || []).forEach(p => {
@@ -615,10 +557,10 @@ async function loadClayHistory() {
       });
     });
 
-    // ---- Sort ASC by date (untuk hitung kumulatif dari awal) ----
+    // Sort ASC by date
     allItems.sort((a, b) => a.target_date < b.target_date ? -1 : a.target_date > b.target_date ? 1 : 0);
 
-    // ---- Hitung kumulatif per customer ----
+    // Hitung kumulatif per customer
     const cumul = {};
     const rows = [];
 
@@ -650,13 +592,13 @@ async function loadClayHistory() {
       });
     });
 
-    // ---- Sort DESC by date, ASC by nama ----
+    // Sort DESC by date, ASC by nama
     rows.sort((a, b) => {
       if (a.target_date !== b.target_date) return a.target_date < b.target_date ? 1 : -1;
       return a.customer_name.localeCompare(b.customer_name);
     });
 
-    // ---- Pre-group by target_date (biar pagination per tanggal) ----
+    // Pre-group by target_date
     const dateGroups = [];
     let curGroup = null;
     rows.forEach(r => {
@@ -762,14 +704,13 @@ function bindWaButtons() {
   });
 }
 
-// FORMAT NO WA & KIRIM FOLLOW UP
 function sendWhatsAppReminder(phone, name, isCarryOver = false, carryCount = 1) {
   if (!phone || phone === "-") {
     alert(`Nomor telepon untuk ${name} tidak tersedia.`);
     return;
   }
 
-  let formattedPhone = phone.replace(/\D/g, "");
+  let formattedPhone = String(phone).replace(/\D/g, "");
   if (formattedPhone.startsWith("0")) formattedPhone = "62" + formattedPhone.slice(1);
   else if (formattedPhone.startsWith("8")) formattedPhone = "62" + formattedPhone;
 
@@ -862,13 +803,12 @@ function renderAuthState() {
   const token = localStorage.getItem("access_token");
   const userInfoRaw = localStorage.getItem("user_info");
 
-  // FIX: pakai selector yang bener (id + class fallback)
-  const headerTextGroup = document.querySelector("#header-user-text") 
+  const headerTextGroup = document.querySelector("#header-user-text")
                         || document.querySelector(".user-text-group");
   const headerIcon      = document.querySelector(".user-icon");
-  const sidebarName     = document.querySelector("#sidebar-user-name") 
+  const sidebarName     = document.querySelector("#sidebar-user-name")
                         || document.querySelector(".brand-title");
-  const sidebarAvatar   = document.querySelector("#sidebar-user-avatar") 
+  const sidebarAvatar   = document.querySelector("#sidebar-user-avatar")
                         || document.querySelector(".brand-logo-wrapper");
 
   if (token) {
@@ -923,14 +863,10 @@ async function loadDatabaseRealData() {
     });
 
     if (response.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_info");
-      renderAuthState();
+      handleUnauthorized("loadDatabaseRealData: token expired");
       if (tableBody) {
         tableBody.innerHTML = `<tr><td colspan="13" style="text-align: center; padding: 28px; color: #ff5252;">🔒 Sesi berakhir. Silakan login ulang.</td></tr>`;
       }
-      const lm = document.getElementById("login-modal");
-      if (lm) lm.classList.remove("hidden");
       return;
     }
 

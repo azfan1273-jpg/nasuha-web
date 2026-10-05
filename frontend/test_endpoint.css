@@ -1,0 +1,45 @@
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, monospace;
+  padding: 12px;
+  background: #111;
+  color: #eee;
+  margin: 0;
+  font-size: 13px;
+}
+h1 { font-size: 18px; margin: 8px 0; }
+h2 { font-size: 14px; margin: 16px 0 8px; color: #f472b6; }
+button {
+  padding: 10px 16px;
+  margin: 4px 4px 4px 0;
+  cursor: pointer;
+  background: #ec4899;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+}
+button:active { background: #db2777; }
+pre {
+  background: #1a1a1a;
+  padding: 12px;
+  overflow: auto;
+  max-height: 500px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.ok { color: #10b981; }
+.err { color: #ef4444; }
+.warn { color: #f59e0b; }
+.label { color: #9ca3af; font-size: 11px; text-transform: uppercase; }
+.box {
+  background: #1f2937;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border-left: 3px solid #ec4899;
+}

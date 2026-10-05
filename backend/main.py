@@ -144,7 +144,13 @@ async def spa_fallback(full_path: str):
 
     # File fisik (css/js/png/html component) → sajikan langsung
     if full_path and os.path.isfile(target):
-        return FileResponse(target)
+        resp = FileResponse(target)
+        # Paksa browser selalu cek ulang file statis (HTML/CSS/JS)
+        if target.endswith(('.html', '.css', '.js')):
+            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+        return resp
 
     # Route SPA / halaman web → index.html
     return FileResponse(os.path.join(frontend_folder, "index.html"))

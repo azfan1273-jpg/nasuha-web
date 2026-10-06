@@ -238,12 +238,9 @@ let _clayEngineInflight = false;
   
   async function _loadClayEngineDataInner() {
   const tbodyPredict = document.getElementById("tbody-predict");
-  const tbodyCarry = document.getElementById("tbody-carry");
   const statPotensialEl = document.getElementById("stat-total-potensial");
-  const statCarryEl = document.getElementById("stat-total-carry-over");
   const statOmsetEl = document.getElementById("stat-total-omset");
   const badgeCountNormal = document.getElementById("badge-count-normal");
-  const badgeCountCarry = document.getElementById("badge-count-carry");
   const dateEl = document.getElementById("clay-engine-date");
 
   // Set tanggal header
@@ -309,9 +306,6 @@ let _clayEngineInflight = false;
     if (tbodyPredict) {
       tbodyPredict.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#ffb74d;">Sesi habis atau belum login.</td></tr>`;
     }
-    if (tbodyCarry) {
-      tbodyCarry.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#ffb74d;">—</td></tr>`;
-    }
     return;
   }
 
@@ -338,31 +332,24 @@ let _clayEngineInflight = false;
     }
 
     const predictions = Array.isArray(result.predictions) ? result.predictions : [];
-    const carryOvers = Array.isArray(result.carry_over) ? result.carry_over : [];
-
-    const omsetNormal = predictions.reduce((s, i) => s + Number(i.est_spend || 0), 0);
-    const omsetCarry = carryOvers.reduce((s, i) => s + Number(i.est_spend || 0), 0);
-    const totalOmset = omsetNormal + omsetCarry;
+    const totalOmset = predictions.reduce((s, i) => s + Number(i.est_spend || 0), 0);
+    const avgScore = predictions.length > 0
+      ? Math.round(predictions.reduce((s, i) => s + (Number(i.score) || 0), 0) / predictions.length)
+      : null;
 
     if (statPotensialEl) statPotensialEl.innerText = `${predictions.length} Pelanggan`;
-    if (statCarryEl) statCarryEl.innerText = `${carryOvers.length} Pelanggan`;
     if (statOmsetEl) statOmsetEl.innerText = `Rp ${totalOmset.toLocaleString("id-ID")}`;
+    const statAvgScoreEl = document.getElementById("stat-avg-score");
+    if (statAvgScoreEl) statAvgScoreEl.innerText = avgScore !== null ? `${avgScore}%` : "—";
     if (badgeCountNormal) badgeCountNormal.innerText = `${predictions.length} items`;
-    if (badgeCountCarry) badgeCountCarry.innerText = `${carryOvers.length} items`;
 
     renderPredictTable(predictions);
-    renderCarryOverTable(carryOvers);
     bindWaButtons();
-
-    loadClayHistory();
 
   } catch (error) {
     console.error("Clay Engine Error:", error);
     if (tbodyPredict) {
       tbodyPredict.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff5252;">Error: ${escHTML(error.message)}</td></tr>`;
-    }
-    if (tbodyCarry) {
-      tbodyCarry.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff5252;">—</td></tr>`;
     }
   }
 }
@@ -452,239 +439,9 @@ function renderPredictTable(items) {
 // RENDER — TABLE CARRY OVER
 // =====================================================
 
-function renderCarryOverTable(items) {
-  const tbody = document.getElementById("tbody-carry");
-  if (!tbody) return;
-
-  if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#888;">Tidak ada pelanggan carry over saat ini.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = items.map((item, idx) => {
-    const name = item.name || item.customer_name || "Pelanggan";
-    const phone = item.phone || item.customer_phone || "-";
-    const tag = item.tag || "Reguler";
-    const score = Number(item.score) || 0;
-    const cycle = item.cycle_days ? `${Math.round(item.cycle_days)} hari` : "-";
-    const carry = item.carry_over_count || 1;
-    const reason = item.reason || "-";
-    const tagStyle = getTagStyle(tag);
-    const scoreColor = getScoreColor(score);
-    const carryBadge = getCarryBadge(carry);
-
-    return `
-      <tr style="border-bottom: 1px solid #27272a;">
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color: #aaa; font-size: 0.85rem;">${idx + 1}</td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color: #fff; font-weight: 600; font-size: 0.85rem;">${escHTML(name)}</td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a;">
-          <span style="background:${tagStyle.bg}; color:${tagStyle.color}; border:1px solid ${tagStyle.border}; padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:600;">${escHTML(tag)}</span>
-        </td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a;">
-          <span style="background:${carryBadge.bg}; color:${carryBadge.color}; padding:3px 10px; border-radius:10px; font-size:0.72rem; font-weight:700;">${carryBadge.label}</span>
-        </td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:${scoreColor}; font-weight:700; font-size:0.9rem;">${score}%</td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:#ccc; font-size:0.83rem;">${cycle}</td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:#ccc; font-size:0.83rem;">${escHTML(phone)}</td>
-        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:#aaa; font-size:0.8rem; max-width: 280px;">${escHTML(reason)}</td>
-        <td style="padding: 12px 14px; text-align: center;">
-          <button class="btn-wa-action" data-phone="${escHTML(phone)}" data-name="${escHTML(name)}" data-is-carry="true" data-carry-count="${carry}"
-            style="background: #25D366; color: #000; border: none; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;">
-            💬 WA
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join("");
-}
-
 // =====================================================
 // HISTORY PREDIKSI
 // =====================================================
-
-async function loadClayHistory() {
-  const tbody = document.getElementById("tbody-history");
-  const btnWrap = document.getElementById("btn-history-loadmore-wrap");
-  const btnLoadMore = document.getElementById("btn-history-loadmore");
-
-  // Guard: kalau HTML belum punya table history, skip aja
-  if (!tbody) {
-    console.debug("[loadClayHistory] tbody-history tidak ada di DOM, skip.");
-    return;
-  }
-
-  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#888;">Memuat history...</td></tr>`;
-  if (btnWrap) btnWrap.style.display = "none";
-
-  const token = localStorage.getItem("access_token");
-  const storeId = localStorage.getItem("store_id");
-
-  if (!token) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ffb74d;">Login dulu untuk lihat history.</td></tr>`;
-    return;
-  }
-
-  try {
-    let url = `/api/clay/history/accuracy?period=all`;
-    if (storeId) url += `&store_id=${encodeURIComponent(storeId)}`;
-
-    const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
-
-    if (res.status === 401) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ff5252;">🔒 Sesi berakhir. Silakan login ulang.</td></tr>`;
-      handleUnauthorized("loadClayHistory: token expired");
-      return;
-    }
-
-    if (!res.ok) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ffb74d;">Gagal load history (HTTP ${res.status}).</td></tr>`;
-      return;
-    }
-
-    const data = await res.json();
-    const groups = Array.isArray(data.groups) ? data.groups : [];
-
-    if (groups.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#888;">Belum ada history prediksi.</td></tr>`;
-      return;
-    }
-
-    // Flatten semua prediksi dari semua tanggal
-    const allItems = [];
-    groups.forEach(g => {
-      (g.predictions || []).forEach(p => {
-        allItems.push({ target_date: g.target_date, ...p });
-      });
-    });
-
-    // Sort ASC by date
-    allItems.sort((a, b) => a.target_date < b.target_date ? -1 : a.target_date > b.target_date ? 1 : 0);
-
-    // Hitung kumulatif per customer
-    const cumul = {};
-    const rows = [];
-
-    allItems.forEach(item => {
-      const code = item.customer_code || item.customer_name;
-      if (!cumul[code]) cumul[code] = { total: 0, hit: 0, miss: 0, carry: {} };
-      const c = cumul[code];
-
-      c.total += 1;
-      if (item.outcome_status === "hit") c.hit += 1;
-      if (item.outcome_status === "miss") c.miss += 1;
-      if (item.is_carry_over && item.carry_over_count > 0) {
-        const lvl = item.carry_over_count;
-        c.carry[lvl] = (c.carry[lvl] || 0) + 1;
-      }
-
-      const evaluated = c.hit + c.miss;
-      const accuracy = evaluated > 0 ? (c.hit / evaluated * 100) : null;
-
-      rows.push({
-        target_date: item.target_date,
-        customer_name: item.customer_name || "Pelanggan",
-        outcome_status: item.outcome_status || "pending",
-        total: c.total,
-        hit: c.hit,
-        miss: c.miss,
-        accuracy: accuracy,
-        carry: { ...c.carry },
-      });
-    });
-
-    // Sort DESC by date, ASC by nama
-    rows.sort((a, b) => {
-      if (a.target_date !== b.target_date) return a.target_date < b.target_date ? 1 : -1;
-      return a.customer_name.localeCompare(b.customer_name);
-    });
-
-    // Pre-group by target_date
-    const dateGroups = [];
-    let curGroup = null;
-    rows.forEach(r => {
-      if (!curGroup || curGroup.date !== r.target_date) {
-        curGroup = { date: r.target_date, items: [] };
-        dateGroups.push(curGroup);
-      }
-      curGroup.items.push(r);
-    });
-
-    const DATE_PAGE_SIZE = 10;
-    let shownDates = 0;
-
-    const renderPage = () => {
-      const sliceGroups = dateGroups.slice(shownDates, shownDates + DATE_PAGE_SIZE);
-
-      let html = "";
-      sliceGroups.forEach((group, gi) => {
-        let dateShort = group.date;
-        try {
-          const d = new Date(group.date);
-          dateShort = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
-        } catch (_) {}
-
-        const isLastGroupInAll = (shownDates + gi === dateGroups.length - 1);
-        const thickBorder = "3px solid #666";
-        const thinBorder = "1px solid #27272a";
-        const groupEndBorder = isLastGroupInAll ? thinBorder : thickBorder;
-
-        group.items.forEach((r, idx) => {
-          const isLastRow = (idx === group.items.length - 1);
-          const accColor = r.accuracy == null ? "#888" : r.accuracy >= 70 ? "#00E676" : r.accuracy >= 50 ? "#ffc107" : "#ff5252";
-          const accText  = r.accuracy == null ? "—" : `${r.accuracy.toFixed(0)}%`;
-
-          let badge = "";
-          if (r.outcome_status === "hit")  badge = `<span style="margin-left:6px;">✅</span>`;
-          else if (r.outcome_status === "miss") badge = `<span style="margin-left:6px;">❌</span>`;
-          else badge = `<span style="margin-left:6px;">⏳</span>`;
-
-          let carryHtml = `<span style="color:#555;">—</span>`;
-          const carryKeys = Object.keys(r.carry).map(Number).sort((a, b) => a - b);
-          if (carryKeys.length > 0) {
-            carryHtml = carryKeys.map(lvl =>
-              `<div style="color:#ffb74d; font-size:0.78rem; line-height:1.45;">${r.carry[lvl]}x <span style="color:#888;">(telat ${lvl} hari)</span></div>`
-            ).join("");
-          }
-
-          const dateCell = idx === 0
-            ? `<td rowspan="${group.items.length}" style="padding:10px 14px; border-right:1px solid #27272a; border-bottom:${groupEndBorder}; color:#28c8ff; font-weight:700; font-size:0.85rem; white-space:nowrap; vertical-align:top;">${escHTML(dateShort)}</td>`
-            : "";
-
-          const rowBorder = isLastRow ? groupEndBorder : thinBorder;
-
-          html += `
-            <tr style="border-bottom:${rowBorder};">
-              ${dateCell}
-              <td style="padding:10px 14px; border-right:1px solid #27272a; color:#fff; font-weight:600; font-size:0.85rem;">${escHTML(r.customer_name)}${badge}</td>
-              <td style="padding:10px 14px; border-right:1px solid #27272a; color:${accColor}; font-weight:700; font-size:0.85rem;">${accText}</td>
-              <td style="padding:10px 14px; border-right:1px solid #27272a; color:#ccc; font-size:0.83rem;">${r.total}x</td>
-              <td style="padding:10px 14px; border-right:1px solid #27272a; color:#00E676; font-weight:600; font-size:0.83rem;">${r.hit}x</td>
-              <td style="padding:10px 14px; border-right:1px solid #27272a; color:#ff5252; font-weight:600; font-size:0.83rem;">${r.miss}x</td>
-              <td style="padding:10px 14px; font-size:0.83rem;">${carryHtml}</td>
-            </tr>
-          `;
-        });
-      });
-
-      if (shownDates === 0) tbody.innerHTML = html;
-      else tbody.insertAdjacentHTML("beforeend", html);
-
-      shownDates += sliceGroups.length;
-      if (btnWrap) btnWrap.style.display = shownDates < dateGroups.length ? "block" : "none";
-    };
-
-    renderPage();
-
-    if (btnLoadMore && !btnLoadMore.dataset.bound) {
-      btnLoadMore.dataset.bound = "true";
-      btnLoadMore.addEventListener("click", renderPage);
-    }
-
-  } catch (err) {
-    console.error("[loadClayHistory] error:", err);
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ff5252;">Error: ${escHTML(err.message)}</td></tr>`;
-  }
-}
 
 // =====================================================
 // BIND WA BUTTONS

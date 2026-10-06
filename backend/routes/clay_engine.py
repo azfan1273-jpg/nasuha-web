@@ -20,8 +20,6 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from routes.analytics import AuthContext, get_auth_context
 from services.shared.store_utils import fetch_store_timezone
-from services.clay_insight_service import build_accuracy_history
-
 logger = logging.getLogger(__name__)
 
 # ============================================================
@@ -310,163 +308,6 @@ def calculate_today_prediction(orders: list, timezone_str: str) -> dict:
 # ============================================================
 # 2. CARRY OVER (H-1 s/d H-3, cap +3)
 # ============================================================
-def build_carry_over_predictions(
-    token: str,
-    store_id: str,
-    today_local: date,
-    timezone_str: str,
-    exclude_codes: Optional[Set[str]] = None,
-) -> list:
-    """Carry over H-1..H-MAX, cap di MAX_CARRY_OVER → churn."""
-    from services.shared.supabase_user_client import get_user_client
-
-    exclude_codes = exclude_codes or set()
-    tz = resolve_timezone(timezone_str)
-
-    try:
-        supabase = get_user_client(token)
-    except Exception:
-        logger.exception("Carry over: gagal inisialisasi Supabase")
-        return []
-
-    candidate_dates = [
-        (today_local - timedelta(days=i)).isoformat()
-        for i in range(1, MAX_CARRY_OVER + 1)
-    ]
-
-    try:
-        res = (
-            supabase.table("prediction_logs")
-            .select("*")
-            .eq("store_id", store_id)
-            .in_("prediction_target_date", candidate_dates)
-            .in_("outcome_status", ["pending", "miss"])
-            .execute()
-        )
-    except Exception:
-        logger.exception("Carry over: gagal fetch log")
-        return []
-
-    logs = res.data or []
-    if not logs:
-        return []
-
-    # === FIX #1: group SEMUA log per customer, nanti pilih yang TERBARU ===
-    by_customer: Dict[str, list] = defaultdict(list)
-    for log in logs:
-        code = log.get("customer_code")
-        if not code or code in exclude_codes:
-            continue
-        td = log.get("prediction_target_date")
-        if not td:
-            continue
-        by_customer[code].append(log)
-
-    if not by_customer:
-        return []
-
-    latest_log: Dict[str, dict] = {}
-    for code, cust_logs in by_customer.items():
-        cust_logs.sort(key=lambda x: x["prediction_target_date"])
-        latest_log[code] = cust_logs[-1]
-
-    # Fetch orders window [today-MAX, today+1)
-    codes = list(latest_log.keys())
-    min_date = today_local - timedelta(days=MAX_CARRY_OVER)
-    start_utc, _ = _day_range_utc(min_date, tz)
-    _, end_utc = _day_range_utc(today_local + timedelta(days=1), tz)
-
-    try:
-        orders_res = (
-            supabase.table("orders")
-            .select("customer_code, created_at, status")
-            .eq("store_id", store_id)
-            .in_("customer_code", codes)
-            .gte("created_at", start_utc)
-            .lt("created_at", end_utc)
-            .execute()
-        )
-    except Exception:
-        logger.exception("Carry over: gagal fetch orders")
-        return []
-
-    visited_dates: Dict[str, Set[date]] = defaultdict(set)
-    for o in orders_res.data or []:
-        if is_cancelled_status(o.get("status")):
-            continue
-        dt = parse_datetime(o.get("created_at"))
-        if not dt:
-            continue
-        visited_dates[o.get("customer_code")].add(dt.astimezone(tz).date())
-
-    result = []
-    for code, log in latest_log.items():
-        td_str = log["prediction_target_date"]
-        try:
-            target_date = date.fromisoformat(td_str)
-        except ValueError:
-            continue
-
-        if any(d >= target_date for d in visited_dates.get(code, set())):
-            continue
-
-        prev_carry = log.get("carry_over_count") or 0
-        new_carry = prev_carry + 1
-
-        # === FIX #2: churn → mark SEMUA log pending/miss customer ini ===
-        if new_carry > MAX_CARRY_OVER:
-            try:
-                supabase.table("prediction_logs").update({
-                    "prediction_status": "churn_potential",
-                    "outcome_status": "churn",
-                }).eq("store_id", store_id).eq("customer_code", code).in_(
-                    "outcome_status", ["pending", "miss"]
-                ).execute()
-                logger.info(
-                    "Carry over: customer %s churn (prev_carry=%d > %d)",
-                    code, prev_carry, MAX_CARRY_OVER,
-                )
-            except Exception:
-                logger.exception("Gagal update churn untuk customer %s", code)
-            continue
-
-        base_score = log.get("score") or 50
-        new_score = max(40, base_score - 5 * new_carry)
-        reason = f"Telat {new_carry} hari dari jadwal"
-
-        result.append({
-            "customer_code": code,
-            "customer_name": log.get("customer_name"),
-            "customer_phone": log.get("customer_phone") or "-",
-            "prediction_target_date": today_local.isoformat(),
-            "rank": len(result) + 1,
-            "score": new_score,
-            "tag": log.get("tag") or "Reguler",
-            "cycle_days": log.get("cycle_days"),
-            "cycle_deviation": log.get("cycle_deviation"),
-            "days_since_last": (log.get("days_since_last") or 0) + 1,
-            "transaction_count": log.get("transaction_count"),
-            "total_spend": log.get("total_spend"),
-            "avg_spend": log.get("avg_spend"),
-            "est_spend": log.get("est_spend"),
-            "favorite_service": log.get("favorite_service"),
-            "reason": reason,
-            "reason_secondary": f"Target: {td_str}",
-            "prediction_status": "Telat",
-            "confidence_level": log.get("confidence_level") or "medium",
-            "last_transaction": log.get("last_transaction"),
-            "is_carry_over": True,
-            "carry_over_count": new_carry,
-            "carried_from_log_id": log.get("id"),
-        })
-
-    result.sort(key=lambda x: (x["carry_over_count"], x["score"]), reverse=True)
-    for i, r in enumerate(result, 1):
-        r["rank"] = i
-
-    return result
-
-
 # ============================================================
 # 3. EVALUATOR
 # ============================================================
@@ -688,16 +529,6 @@ def _predict_for_store(auth_header: str, store_id: str, evaluate_first: bool = T
     raw_predictions = clay_result.get("predictions", [])
     metadata = clay_result.get("metadata", {})
 
-    today_local = get_local_today(timezone_str)
-    normal_codes = {p.get("customer_code") for p in raw_predictions if p.get("customer_code")}
-
-    carry_over = build_carry_over_predictions(
-        token=token_str, store_id=store_id,
-        today_local=today_local, timezone_str=timezone_str,
-        exclude_codes=normal_codes,
-    )
-    clay_result["carry_over"] = carry_over
-
     run_id = log_prediction_run(token_str, store_id, clay_result)
     if run_id:
         metadata["run_id"] = run_id
@@ -705,7 +536,6 @@ def _predict_for_store(auth_header: str, store_id: str, evaluate_first: bool = T
     return {
         "run_id": run_id,
         "predictions": raw_predictions,
-        "carry_over": carry_over,
         "top_services": clay_result.get("top_services", []),
         "metadata": metadata,
         "timezone": timezone_str,
@@ -762,15 +592,3 @@ def predict_today_endpoint(ctx: AuthContext = Depends(get_auth_context)):
         logger.exception("Predict today error")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
-@clay_router.get("/history/accuracy")
-def history_accuracy_endpoint(period: str = "7d", ctx: AuthContext = Depends(get_auth_context)):
-    try:
-        token_str = ctx.auth_header.replace("Bearer ", "", 1).strip()
-        tz = fetch_store_timezone(ctx.store_id, ctx.auth_header)
-        return build_accuracy_history(
-            token=token_str, store_id=ctx.store_id,
-            timezone_str=tz, period=period,
-        )
-    except Exception as e:
-        logger.exception("History accuracy error")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")

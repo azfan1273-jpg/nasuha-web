@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from routes.analytics import AuthContext, get_auth_context
 from services.predict_today import predict_for_store
 from services.predict_today.cron import run_daily_for_all_stores
+from services.predict_today.history import get_prediction_history
 from services.shared.cron_auth import verify_cron_secret
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,25 @@ def predict_today_endpoint(ctx: AuthContext = Depends(get_auth_context)):
     except Exception as e:
         logger.exception("Predict today error")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+# ============================================================
+# RIWAYAT AKURASI PREDIKSI (user-facing, butuh JWT user)
+# ============================================================
+@clay_router.get("/history/accuracy")
+def history_accuracy_endpoint(
+    period: str = "30d",
+    ctx: AuthContext = Depends(get_auth_context),
+):
+    """Rangkum akurasi hit/miss prediksi per tanggal (max 90 hari)."""
+    try:
+        days = int("".join(ch for ch in period if ch.isdigit()) or 30)
+    except ValueError:
+        days = 30
+    days = max(1, min(days, 90))
+
+    token = ctx.auth_header.replace("Bearer ", "", 1).strip()
+    return get_prediction_history(token, ctx.store_id, days=days)
 
 
 # ============================================================

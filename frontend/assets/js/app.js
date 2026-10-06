@@ -352,6 +352,93 @@ let _clayEngineInflight = false;
       tbodyPredict.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:#ff5252;">Error: ${escHTML(error.message)}</td></tr>`;
     }
   }
+
+  // Ikut muat tabel riwayat akurasi di bawah table target kedatangan
+  loadPredictionHistory();
+}
+
+// =====================================================
+// RIWAYAT AKURASI PREDIKSI (tabel di bawah Target Kedatangan)
+// =====================================================
+
+async function loadPredictionHistory() {
+  const tbody = document.getElementById("tbody-accuracy");
+  if (!tbody) return;
+
+  const badgeCount = document.getElementById("badge-count-accuracy");
+  const token = localStorage.getItem("access_token");
+  const storeId = localStorage.getItem("store_id");
+
+  if (!token) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ffb74d;">Sesi habis atau belum login.</td></tr>`;
+    return;
+  }
+
+  try {
+    let apiUrl = "/api/clay/history/accuracy?period=30d";
+    if (storeId) apiUrl += `&store_id=${encodeURIComponent(storeId)}`;
+
+    const res = await fetch(apiUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+    });
+
+    if (res.status === 401) {
+      handleUnauthorized("Riwayat akurasi: token expired");
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#ff5252;">🔒 Sesi berakhir. Silakan login ulang.</td></tr>`;
+      return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || data.message || "Gagal fetch riwayat akurasi");
+
+    const daily = Array.isArray(data.daily) ? data.daily : [];
+    if (badgeCount) badgeCount.innerText = `${daily.length} items`;
+    renderAccuracyTable(daily);
+
+  } catch (error) {
+    console.error("Riwayat Akurasi Error:", error);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#ff5252;">Error: ${escHTML(error.message)}</td></tr>`;
+  }
+}
+
+function getAccuracyColor(acc) {
+  if (acc == null) return "#8a8a93";
+  if (acc >= 80) return "#00E676";
+  if (acc >= 60) return "#ffc107";
+  if (acc >= 40) return "#ff9800";
+  return "#ff5252";
+}
+
+function renderAccuracyTable(rows) {
+  const tbody = document.getElementById("tbody-accuracy");
+  if (!tbody) return;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#888;">Belum ada riwayat evaluasi prediksi.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((row, idx) => {
+    const tanggal = row.date || row.prediction_target_date || "-";
+    const pelanggan = Number(row.pelanggan ?? row.evaluated ?? 0);
+    const hit = Number(row.hit ?? 0);
+    const miss = Number(row.miss ?? 0);
+    const acc = row.accuracy != null ? Number(row.accuracy) : null;
+    const keterangan = row.keterangan || "-";
+
+    return `
+      <tr style="border-bottom: 1px solid #27272a;">
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color: #aaa; font-size: 0.85rem;">${idx + 1}</td>
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color: #ccc; font-size: 0.85rem;">${escHTML(tanggal)}</td>
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color: #fff; font-weight: 600; font-size: 0.85rem;">${pelanggan} Pelanggan</td>
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; color:${getAccuracyColor(acc)}; font-weight:700; font-size:0.9rem;">${acc != null ? `${acc.toFixed(1)}%` : "—"}</td>
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; text-align: center;"><span style="background:rgba(0,230,118,0.15); color:#00E676; border:1px solid rgba(0,230,118,0.4); padding:2px 10px; border-radius:12px; font-size:0.78rem; font-weight:700;">${hit}</span></td>
+        <td style="padding: 12px 14px; border-right: 1px solid #27272a; text-align: center;"><span style="background:rgba(255,82,82,0.15); color:#ff5252; border:1px solid rgba(255,82,82,0.4); padding:2px 10px; border-radius:12px; font-size:0.78rem; font-weight:700;">${miss}</span></td>
+        <td style="padding: 12px 14px; color: #ccc; font-size: 0.83rem;">${escHTML(keterangan)}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 // =====================================================

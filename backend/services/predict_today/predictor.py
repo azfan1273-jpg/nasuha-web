@@ -24,13 +24,13 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 from statistics import median
 
-from services.prediction.cycle import (
+from services.predict_today.cycle import (
     MAX_RELATIVE_DEVIATION, detect_cycle, extract_intervals,
 )
-from services.prediction.segmentation import (
+from services.predict_today.segmentation import (
     SEGMENT_SCORE_ADJUST, SEGMENT_TAGS, classify_segment,
 )
-from services.prediction.weights import build_cycle_corrections
+from services.predict_today.weights import build_cycle_corrections
 from services.shared.customer_utils import get_customer_code, get_customer_name, get_phone
 from services.shared.datetime_utils import (
     get_local_today, parse_datetime, resolve_timezone, to_local, utc_now,

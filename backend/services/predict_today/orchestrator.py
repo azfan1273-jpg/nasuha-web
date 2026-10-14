@@ -1,17 +1,14 @@
 """Predict Today — orchestrator (alur utama 1 toko).
-v7.0: mesin prediksi diganti ke services.prediction (prediction-v2.1).
-Alasan: v2.1 punya multi-cycle, pola hari, segmentasi, feedback loop,
-dan definisi kunjungan yang benar (order PROSES/Antrian tetap dihitung
-sebagai kunjungan). Engine v6 lama (predict_today/predictor.py)
-disimpan sebagai cadangan tapi tidak dipakai lagi.
+v2.1: engine internal (cycle, predictor, segmentation, weights, evaluator)
+ada di folder ini, tinggal panggil langsung.
 """
 import logging
 from datetime import date
 
 from services.predict_today.carry_over import build_carry_over_predictions
 from services.predict_today.logger import log_prediction_run
-from services.prediction.evaluator import evaluate_prediction_logs
-from services.prediction.predictor import predict_arrivals
+from services.predict_today.evaluator import evaluate_prediction_logs
+from services.predict_today.predictor import predict_arrivals
 from services.shared.datetime_utils import get_local_today
 from services.shared.orders_repository import fetch_orders_for_store
 from services.shared.store_utils import fetch_store_timezone
@@ -20,7 +17,7 @@ from services.shared.supabase_user_client import get_user_client
 logger = logging.getLogger(__name__)
 
 # Skor di bawah ini dianggap spekulasi -> jangan tampil di list utama.
-MIN_DISPLAY_SCORE = 40
+MIN_DISPLAY_SCORE = 80
 # Urutan operasional: yang jatuh hari ini dulu, lalu besok, lalu telat.
 _STATUS_ORDER = {"Hari ini": 0, "Besok": 1}
 

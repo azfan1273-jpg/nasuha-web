@@ -31,7 +31,7 @@ def build_carry_over_predictions(token, store_id, today_local, timezone_str, exc
         res = (
             supabase.table("prediction_logs").select("*")
             .eq("store_id", store_id)
-            .in_("prediction_target_date", candidate_dates)
+            .in_("target_date", candidate_dates)
             .in_("outcome_status", ["pending", "miss"])
             .execute()
         )
@@ -104,7 +104,7 @@ def build_carry_over_predictions(token, store_id, today_local, timezone_str, exc
 
 
 def _build_entry(code, log, visited, today_local, supabase, store_id):
-    td_str = log["prediction_target_date"]
+    td_str = log["target_date"] 
     try:
         target_date = date.fromisoformat(td_str)
     except ValueError:
@@ -123,17 +123,45 @@ def _build_entry(code, log, visited, today_local, supabase, store_id):
     base_score = log.get("score") or 50
     new_score = max(40, base_score - 5 * new_carry)
 
+    # FIX BUG #3: days_since_last dihitung ulang dari data order terbaru,
+    # bukan increment buta (+1) dari log lama yang bisa basi kalau cron bolong.
+    last_seen = None
+    if visited:
+        last_visit = max(visited)
+        if last_visit < today_local:
+            last_seen = last_visit.isoformat()
+
+    base_log_last = log.get("last_transaction")
+    if last_seen is None and base_log_last:
+        try:
+            lt = date.fromisoformat(base_log_last)
+            # Sinkronkan: kalau ada kunjungan baru setelah last_transaction log, pakai itu.
+            if visited and max(visited) > lt:
+                last_seen = max(visited).isoformat()
+            else:
+                last_seen = base_log_last
+        except ValueError:
+            last_seen = base_log_last
+
+    if last_seen:
+        try:
+            days_since_last = (today_local - date.fromisoformat(last_seen)).days
+        except ValueError:
+            days_since_last = (log.get("days_since_last") or 0) + 1
+    else:
+        days_since_last = (log.get("days_since_last") or 0) + 1
+
     return {
         "customer_code": code,
         "customer_name": log.get("customer_name"),
         "customer_phone": log.get("customer_phone") or "-",
-        "prediction_target_date": today_local.isoformat(),
+        "target_date": today_local.isoformat(),
         "rank": 1,
         "score": new_score,
         "tag": log.get("tag") or "Reguler",
         "cycle_days": log.get("cycle_days"),
         "cycle_deviation": log.get("cycle_deviation"),
-        "days_since_last": (log.get("days_since_last") or 0) + 1,
+        "days_since_last": days_since_last,
         "transaction_count": log.get("transaction_count"),
         "total_spend": log.get("total_spend"),
         "avg_spend": log.get("avg_spend"),
@@ -143,7 +171,7 @@ def _build_entry(code, log, visited, today_local, supabase, store_id):
         "reason_secondary": f"Target: {td_str}",
         "prediction_status": "Telat",
         "confidence_level": log.get("confidence_level") or "medium",
-        "last_transaction": log.get("last_transaction"),
+        "last_transaction": last_seen or base_log_last,
         "is_carry_over": True,
         "carry_over_count": new_carry,
         "carried_from_log_id": log.get("id"),

@@ -1,7 +1,8 @@
 // ============================================================
 // API BASE URL
 // ============================================================
-const API_BASE = '';
+const API_BASE = 'https://nasuha-web.vercel.app'; // (Pastiin ini udah URL backend FastAPI lu yang bener)
+const FLUTTER_APP_URL = 'https://nasuhakasir.vercel.app'; // <--- TAMBAHIN INI
 
 // ============================================================
 // LANDING — Auth state + Login modal
@@ -80,7 +81,7 @@ if (ctaBtn) {
     const token = localStorage.getItem('access_token');
     if (token) {
       // Sudah login → langsung ke workspace
-      window.location.href = 'akun.html';
+      window.location.href = FLUTTER_APP_URL;
     } else {
       // Belum login → buka modal login
       openLoginModal();

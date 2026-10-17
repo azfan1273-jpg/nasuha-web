@@ -8,7 +8,7 @@
 
   const CACHE_KEY = 'nasuha_user_ctx';
   const CACHE_TTL = 5 * 60 * 1000; // 5 menit
-  const TOKEN_KEY = 'access_token'; // ✅ SESUAI app.js lo
+  const TOKEN_KEY = 'access_token'; 
 
   // ------------------------------------------------------------
   // Fetch /api/me
@@ -43,9 +43,9 @@
       return {
         userId: data.userId,
         email: data.email,
-        fullName: data.fullName,
+        fullName: data.fullName || data.name || "User", // Fallback
         role: data.role,
-        orgName: data.orgName,
+        orgName: data.orgName || data.nama_toko || "Nasuha Org", // Fallback
         orgCode: data.orgCode,
         storeId: data.storeId,
         fetchedAt: Date.now(),
@@ -98,14 +98,28 @@
         console.warn('[UserContext] Gak ada data user, skip hydrate');
         return;
       }
+
+      // 1. TARGET SPESIFIK: Isi Nama Org di Header
+      const orgNameEl = document.getElementById('header-org-name');
+      if (orgNameEl) {
+        orgNameEl.textContent = user.orgName;
+      }
+
+      // 2. TARGET SPESIFIK: Isi Avatar (Huruf Pertama)
+      const avatarEl = document.getElementById('header-user-avatar');
+      if (avatarEl) {
+        avatarEl.textContent = user.fullName.charAt(0).toUpperCase();
+      }
+
+      // 3. FALLBACK: Masih mendukung atribut data-user (kalau lu butuh di tempat lain)
       root.querySelectorAll('[data-user]').forEach(el => {
         const key = el.dataset.user;
         if (user[key] != null) {
           el.textContent = user[key];
-        } else {
-          console.warn(`[UserContext] Field "${key}" gak ada di data user`);
         }
       });
+      
+      console.log('[UserContext] Data berhasil dimuat ke UI ✅');
     },
 
     clearCache() {
@@ -121,7 +135,5 @@
   } else {
     UserContext.hydrate();
   }
-
-  console.log('[UserContext] Siap ✅');
 
 })(window);

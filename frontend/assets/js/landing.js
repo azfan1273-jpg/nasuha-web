@@ -1,7 +1,11 @@
 // ============================================================
 // API BASE URL
 // ============================================================
-const API_BASE = 'https://nasuha-web.vercel.app'; // (Pastiin ini udah URL backend FastAPI lu yang bener)
+// Otomatis deteksi: kalau buka di lokal, API kosong. Kalau di production, arahkan ke URL backend asli.
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+  ? '' 
+  : 'https://nasuha-web.vercel.app'; // <-- GANTI INI dengan URL Vercel/Render tempat backend Python lu berada
+  
 const FLUTTER_APP_URL = 'https://nasuhakasir.vercel.app'; // <--- TAMBAHIN INI
 
 // ============================================================

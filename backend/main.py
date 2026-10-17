@@ -163,4 +163,8 @@ async def spa_fallback(full_path: str):
 if __name__ == '__main__':
     import uvicorn
     reload_mode = os.environ.get('APP_DEBUG', '0') == '1'
-    uvicorn.run("main:app", host='127.0.0.1', port=8081, reload=reload_mode)
+    # Baca PORT dari environment (buat deploy), kalau nggak ada pakai 8081 (lokal)
+    port = int(os.environ.get("PORT", 8081))
+    
+    # Pakai host 0.0.0.0 biar bisa diakses dari luar (cloud)
+    uvicorn.run("main:app", host='0.0.0.0', port=port, reload=reload_mode)

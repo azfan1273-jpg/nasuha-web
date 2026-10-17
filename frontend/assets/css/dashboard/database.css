@@ -1,0 +1,33 @@
+/* ============================================================
+   DATABASE COMPONENT — wrapper only
+   (table-card, custom-table, dll ada di tables.css)
+   ============================================================ */
+
+.database-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------- STATS (kalau nanti dipakai) ---------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--bg-elevated);
+  padding: 16px;
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--border-default);
+}
+
+.stat-icon { font-size: 2rem; }
+.stat-info { display: flex; flex-direction: column; }
+.stat-label { font-size: .8rem; color: var(--text-secondary); }
+.stat-value { font-size: 1.1rem; font-weight: 700; }
+.text-success { color: var(--accent); }

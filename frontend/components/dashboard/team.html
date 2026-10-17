@@ -1,0 +1,55 @@
+<div class="team-page">
+
+  <div class="page-header">
+    <h1>Team</h1>
+    <p class="page-subtitle">Manage team members and invitations</p>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-left">
+      <input type="text" class="filter-search" placeholder="Filter members" />
+      <button class="filter-chip">MFA status <span class="chev">▾</span></button>
+      <button class="filter-chip">Roles <span class="chev">▾</span></button>
+    </div>
+    <div class="filter-right">
+      <button class="btn-secondary">📖 Docs</button>
+      <button class="btn-primary">Invite members</button>
+    </div>
+  </div>
+
+  <div class="team-table-card">
+    <table class="team-table">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th class="col-mfa">MFA</th>
+          <th class="col-role">Role</th>
+          <th class="col-action"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="member-cell">
+              <span class="member-avatar">A</span>
+              <span class="member-email">azfanl273@gmail.com</span>
+              <span class="member-you">you</span>
+            </div>
+          </td>
+          <td class="col-mfa center">
+            <button class="mfa-btn" title="MFA not enabled">✕</button>
+          </td>
+          <td class="col-role">Owner</td>
+          <td class="col-action right">
+            <button class="btn-secondary btn-sm">Leave team</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="team-footer">
+      <span class="team-count">1 member</span>
+    </div>
+  </div>
+
+</div>

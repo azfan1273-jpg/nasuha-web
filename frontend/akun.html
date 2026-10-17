@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nasuha Labs</title>
-  <link rel="stylesheet" href="assets/css/style.css">
+  <title>Nasuha Labs — Dashboard</title>
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/dashboard.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -19,12 +23,7 @@
       </main>
     </div>
   </div>
-  <!-- Tutup Pembungkus Utama -->
-
-	 <script src="assets/js/security.js"></script>
-	 <script src="assets/js/app.js"></script>
-	 <script src="assets/js/loader.js"></script>
-
+  
 	<!-- Modal Form Login -->
 	<div id="login-modal" class="modal-overlay hidden">
 	  <div class="modal-card">
@@ -46,6 +45,12 @@
 	    </form>
 	  </div>
 	</div>
-  
+  	
+	<!-- Tutup Pembungkus Utama -->
+	<script src="assets/js/user-context.js"></script>
+	<script src="assets/js/security.js"></script>
+	<script src="assets/js/app.js"></script>
+	<script src="assets/js/loader.js"></script>
+
 </body>
 </html>

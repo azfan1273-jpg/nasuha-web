@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harga — Nasuha Labs</title>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/pricing.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="pricing-body">
+
+<!-- ============ TOP BAR ============ -->
+<header class="pricing-topbar">
+  <a href="landing.html" class="topbar-back">
+    <span class="back-arrow">←</span>
+    <span>Kembali ke Studio</span>
+  </a>
+  <div class="topbar-links">
+    <a href="#faq">FAQ Harga <span class="ext-icon">↗</span></a>
+    <a href="#compare" class="btn-outline">Bandingkan paket <span class="ext-icon">↗</span></a>
+  </div>
+</header>
+
+<!-- ============ MAIN ============ -->
+<main class="pricing-main">
+
+  <h1 class="pricing-title">
+  Ubah paket langganan untuk 
+  <a href="dashboard.html" class="org-link" data-user="orgName">Silahkan Login Terlebih dahulu</a>
+</h1>
+
+  <!-- ============ PLAN CARDS ============ -->
+  <div class="plans-grid">
+
+    <!-- ---------- FREE ---------- -->
+    <article class="plan-card is-current">
+      <div class="plan-head">
+        <div class="plan-title-row">
+          <span class="plan-name">Gratis</span>
+          <span class="plan-badge badge-current">Paket saat ini</span>
+        </div>
+        <p class="plan-desc">Sempurna untuk proyek hobi & website sederhana.</p>
+      </div>
+
+      <button class="plan-btn" disabled>Paket saat ini</button>
+
+      <div class="plan-price">
+        <span class="price-value">Rp 0</span>
+        <span class="price-period">/ selamanya</span>
+      </div>
+
+      <div class="plan-features">
+        <span class="features-label">Mulai dengan:</span>
+        <ul>
+          <li><span class="check">✓</span> Kelola Pesanan & Pelanggan</li>
+          <li><span class="check">✓</span> Laporan Keuangan Hybrid</li>
+          <li><span class="check">✓</span> 5 pesanan / hari <em>(lonjakan 2/menit)</em></li>
+          <li><span class="check">✓</span> Maks 1 pegawai</li>
+          <li><span class="check">✓</span> Maks 100 pelanggan</li>
+          <li><span class="check">✓</span> Maks 10 layanan</li>
+          <li class="muted"><span class="cross">✕</span> Ekspor Laporan Excel</li>
+          <li class="muted"><span class="cross">✕</span> Dukungan Prioritas</li>
+          <li class="muted"><span class="cross">✕</span> Analisis Pelanggan (Clay)</li>
+          <li class="muted"><span class="cross">✕</span> Mesin Prediksi</li>
+          <li class="muted"><span class="cross">✕</span> Churn Engine</li>
+          <li class="muted"><span class="cross">✕</span> Multi Cabang</li>
+        </ul>
+      </div>
+
+      <div class="plan-note">
+        Paket Gratis untuk coba-coba. Upgrade kapan saja untuk fitur lengkap.
+      </div>
+    </article>
+
+    <!-- ---------- PLUS ---------- -->
+    <article class="plan-card" data-plan="plus">
+      <div class="plan-head">
+        <div class="plan-title-row">
+          <span class="plan-name">Plus</span>
+        </div>
+        <p class="plan-desc">Buat yang butuh fitur lengkap harian.</p>
+      </div>
+
+      <button class="plan-btn" data-select="plus">Pilih Plus</button>
+
+      <div class="plan-price">
+        <span class="price-value" data-price-label>Rp 50.000</span>
+        <span class="price-period" data-price-period>/ bulan</span>
+      </div>
+
+      <!-- Duration picker -->
+      <div class="duration-picker" data-duration="plus">
+        <label class="duration-opt">
+          <input type="radio" name="duration-plus" value="1" checked>
+          <div class="duration-body">
+            <span class="duration-title">1 Bulan</span>
+            <span class="duration-price">Rp 50.000</span>
+          </div>
+        </label>
+        <label class="duration-opt">
+          <input type="radio" name="duration-plus" value="3">
+          <div class="duration-body">
+            <span class="duration-title">3 Bulan <span class="save-tag">Hemat</span></span>
+            <span class="duration-price">Rp 140.000</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="plan-features">
+        <span class="features-label">Semua fitur Gratis, plus:</span>
+        <ul>
+          <li><span class="check">✓</span> Ekspor Laporan Excel</li>
+          <li><span class="check">✓</span> Dukungan Prioritas</li>
+          <li><span class="check">✓</span> Analisis Pelanggan (Clay)</li>
+          <li><span class="check">✓</span> Mesin Prediksi</li>
+          <li><span class="check">✓</span> 50 pesanan / hari <em>(lonjakan 10/menit)</em></li>
+          <li><span class="check">✓</span> Maks 5 pegawai</li>
+          <li><span class="check">✓</span> Maks 1.000 pelanggan</li>
+          <li><span class="check">✓</span> Maks 500 layanan</li>
+          <li class="muted"><span class="cross">✕</span> Churn Engine</li>
+          <li class="muted"><span class="cross">✕</span> Multi Cabang</li>
+        </ul>
+      </div>
+
+      <div class="plan-note">
+        Cocok untuk bisnis laundry yang sedang tumbuh.
+      </div>
+    </article>
+
+    <!-- ---------- PREMIUM (FEATURED) ---------- -->
+    <article class="plan-card is-featured" data-plan="premium">
+      <span class="featured-ribbon">DIREKOMENDASIKAN</span>
+
+      <div class="plan-head">
+        <div class="plan-title-row">
+          <span class="plan-name">Premium</span>
+          <span class="plan-badge badge-popular">Paling Populer</span>
+        </div>
+        <p class="plan-desc">Buat yang mau mengembangkan bisnis & analitik mendalam.</p>
+      </div>
+
+      <button class="plan-btn btn-primary" data-select="premium">Pilih Premium</button>
+
+      <div class="plan-price">
+        <span class="price-value" data-price-label>Rp 150.000</span>
+        <span class="price-period" data-price-period>/ bulan</span>
+      </div>
+
+      <!-- Duration picker -->
+      <div class="duration-picker" data-duration="premium">
+        <label class="duration-opt is-active">
+          <input type="radio" name="duration-premium" value="1" checked>
+          <div class="duration-body">
+            <span class="duration-title">1 Bulan</span>
+            <span class="duration-price">Rp 150.000</span>
+          </div>
+        </label>
+        <label class="duration-opt">
+          <input type="radio" name="duration-premium" value="3">
+          <div class="duration-body">
+            <span class="duration-title">3 Bulan <span class="save-tag">Hemat</span></span>
+            <span class="duration-price">Rp 400.000</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="plan-features">
+        <span class="features-label">Semua fitur Plus, plus:</span>
+        <ul>
+          <li><span class="check">✓</span> <b>Churn Engine</b></li>
+          <li><span class="check">✓</span> 150 pesanan / hari <em>(lonjakan 20/menit)</em></li>
+          <li><span class="check">✓</span> Maks 10 pegawai</li>
+          <li><span class="check">✓</span> Maks 1.500 pelanggan</li>
+          <li><span class="check">✓</span> Maks 1.000 layanan</li>
+          <li class="muted"><span class="cross">✕</span> Multi Cabang</li>
+        </ul>
+      </div>
+
+      <div class="plan-note">
+        Pilihan paling pas untuk bisnis yang fokus retensi & pertumbuhan.
+      </div>
+    </article>
+
+  </div>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section class="plans-compare" id="compare">
+    <header class="section-head">
+      <h2>Perbandingan Fitur</h2>
+      <p>Detail lengkap fitur dan limit di setiap paket.</p>
+    </header>
+
+    <div class="compare-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Fitur</th>
+            <th class="text-center">Gratis</th>
+            <th class="text-center">Plus</th>
+            <th class="text-center is-featured-col">Premium</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Core -->
+          <tr class="group-row"><td colspan="4">Fitur Inti</td></tr>
+          <tr><td>Kelola Pesanan & Pelanggan</td><td class="text-center"><span class="check">✓</span></td><td class="text-center"><span class="check">✓</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+          <tr><td>Laporan Keuangan Hybrid</td><td class="text-center"><span class="check">✓</span></td><td class="text-center"><span class="check">✓</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+          <tr><td>Ekspor Laporan Excel</td><td class="text-center"><span class="cross">✕</span></td><td class="text-center"><span class="check">✓</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+          <tr><td>Dukungan Prioritas</td><td class="text-center"><span class="cross">✕</span></td><td class="text-center"><span class="check">✓</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+
+          <!-- Clay Engine -->
+          <tr class="group-row"><td colspan="4">Clay Engine</td></tr>
+          <tr><td>Analisis Pelanggan</td><td class="text-center"><span class="cross">✕</span></td><td class="text-center"><span class="check">✓</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+          <tr><td>Mesin Prediksi</td><td class="text-center"><span class="cross">✕</span></td><td class="text-center"><span class="check">✓</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+          <tr><td>Churn Engine</td><td class="text-center"><span class="cross">✕</span></td><td class="text-center"><span class="cross">✕</span></td><td class="text-center is-featured-col"><span class="check">✓</span></td></tr>
+          <tr><td>Multi Cabang <span class="soon-tag">Segera</span></td><td class="text-center"><span class="cross">✕</span></td><td class="text-center"><span class="cross">✕</span></td><td class="text-center is-featured-col"><span class="cross">✕</span></td></tr>
+
+          <!-- Limits -->
+          <tr class="group-row"><td colspan="4">Limit & Kapasitas</td></tr>
+          <tr><td>Kuota pesanan / hari</td><td class="text-center">5</td><td class="text-center">50</td><td class="text-center is-featured-col"><b>150</b></td></tr>
+          <tr><td>Batas lonjakan</td><td class="text-center">2 / menit</td><td class="text-center">10 / menit</td><td class="text-center is-featured-col"><b>20 / menit</b></td></tr>
+          <tr><td>Maks pegawai</td><td class="text-center">1</td><td class="text-center">5</td><td class="text-center is-featured-col"><b>10</b></td></tr>
+          <tr><td>Maks pelanggan</td><td class="text-center">100</td><td class="text-center">1.000</td><td class="text-center is-featured-col"><b>1.500</b></td></tr>
+          <tr><td>Maks layanan</td><td class="text-center">10</td><td class="text-center">500</td><td class="text-center is-featured-col"><b>1.000</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TRIAL NOTE ============ -->
+  <div class="trial-note">
+    <span class="trial-icon">✨</span>
+    <span><b>Uji coba gratis 30 hari pertama sejak pendaftaran.</b> Semua fitur terbuka penuh — tanpa kartu kredit.</span>
+  </div>
+
+  <!-- ============ BOTTOM CTA ============ -->
+  <div class="pricing-bottom">
+    <button class="btn-primary btn-lg" id="btn-continue">Lanjut Pilih Paket</button>
+    <p class="secure-note">Pembayaran aman via Midtrans</p>
+  </div>
+
+</main>
+
+<!-- ============ MODAL KONFIRMASI LANGGANAN ============ -->
+<div id="confirm-modal" class="modal-overlay hidden">
+  <div class="modal-card confirm-card">
+    <div class="confirm-icon">✨</div>
+    <h3 class="confirm-title">Konfirmasi Langganan</h3>
+    <p class="confirm-desc">
+      Anda akan berlangganan paket <b id="confirm-plan-name">Premium</b> 
+      selama <b id="confirm-duration">1 Bulan</b> 
+      dengan total pembayaran <b id="confirm-price">Rp 150.000</b>.
+    </p>
+    <p class="confirm-note">Pastikan pilihan Anda sudah benar sebelum melanjutkan ke pembayaran.</p>
+    
+    <div class="confirm-actions">
+      <button id="btn-cancel-confirm" class="plan-btn">Batal</button>
+      <button id="btn-ok-confirm" class="plan-btn btn-primary">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/user-context.js"></script>
+<script src="assets/js/pricing.js"></script>
+
+</body>
+</html>

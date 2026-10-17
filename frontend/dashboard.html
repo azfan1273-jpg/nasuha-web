@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nasuha Labs — Account</title>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/akun.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="akun-body">
+
+<div class="akun-layout">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside id="akun-sidebar" class="akun-sidebar">
+    <div class="akun-sidebar-head">
+      <button id="sidebar-toggle" class="sidebar-toggle" title="Toggle menu">
+        <span class="toggle-icon">☰</span>
+      </button>
+      <div class="sidebar-brand">
+        <span class="brand-mark">⚡</span>
+        <span class="brand-text">nasuha labs</span>
+      </div>
+    </div>
+
+    <nav class="akun-nav">
+      <a href="landing.html" class="akun-nav-item" data-tooltip="Home">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Home</span>
+      </a>
+      <a href="#" class="akun-nav-item is-active" data-page="projects" data-tooltip="Akun">
+        <span class="nav-icon">📁</span>
+        <span class="nav-label">Akun</span>
+      </a>
+      <a href="#" class="akun-nav-item" data-page="team" data-tooltip="Team">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Team</span>
+      </a>
+      <a href="#" class="akun-nav-item" data-page="settings" data-tooltip="Settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Settings</span>
+      </a>
+    </nav>
+
+    <div class="akun-sidebar-foot">
+      <div class="sidebar-user">
+        <!-- 🔽 UBAH: pake data-user -->
+        <div class="nav-avatar" data-user="fullName">?</div>
+        <div class="user-meta">
+          <span class="user-email" data-user="email">—</span>
+          <span class="user-role" data-user="role">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="akun-main">
+
+    <header class="akun-topbar">
+      <div class="akun-topbar-left">
+        <div class="org-switcher">
+          <!-- 🔽 UBAH: pake data-user -->
+          <span class="org-avatar" data-user="orgName">?</span>
+          <span class="org-name" data-user="orgName">Memuat...</span>
+          <span class="org-plan">FREE</span>
+        </div>
+        <div class="topbar-project" data-page-only="projects">
+          <span class="topbar-sep">/</span>
+          <div class="project-switcher">
+            <span class="project-dot"></span>
+            <span class="project-name">Nasuha</span>
+          </div>
+          <span class="topbar-sep">/</span>
+          <span class="branch-tag">main</span>
+          <span class="prod-tag">PRODUCTION</span>
+        </div>
+      </div>
+      <div class="akun-topbar-right">
+        <button class="topbar-btn-text">Feedback</button>
+        <div class="topbar-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search..." />
+          <span class="search-kbd">Ctrl K</span>
+        </div>
+        <button class="action-btn" title="Help">❓</button>
+        <button class="action-btn" title="Notifications">🔔</button>
+        <div class="nav-avatar" data-user="fullName">?</div>
+      </div>
+    </header>
+
+    <main id="akun-content" class="akun-content">
+      <div class="content-loading">Loading...</div>
+    </main>
+
+  </div>
+</div>
+
+<!-- 🔽 UBAH: tambah user-context.js SEBELUM dashboard.js -->
+
+<script src="assets/js/user-context.js"></script>
+<script src="assets/js/security.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/loader.js"></script>
+<script src="assets/js/dashboard.js"></script>
+
+</body>
+</html>

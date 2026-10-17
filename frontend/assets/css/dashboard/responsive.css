@@ -1,0 +1,74 @@
+/* ============================================================
+   RESPONSIVE — Mobile
+   ============================================================ */
+
+@media screen and (max-width: 768px) {
+
+  html, body {
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+  }
+
+  .app-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  /* ---------- SIDEBAR → HORIZONTAL ---------- */
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-default) !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 100;
+  }
+
+  .brand-header, .nav-bottom { display: none !important; }
+
+  .nav-top {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding: 6px 8px !important;
+  }
+
+  .nav-item a {
+    padding: 6px 12px !important;
+    font-size: .78rem !important;
+    border-radius: var(--r-md);
+  }
+
+  .nav-item.active a {
+    background: var(--accent-subtle) !important;
+    color: var(--accent) !important;
+  }
+
+  /* ---------- MAIN ---------- */
+  .main-wrapper {
+    width: 100% !important;
+    flex: 1 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .top-header {
+    padding: 0 12px !important;
+    height: 48px !important;
+  }
+
+  .header-left .page-title { font-size: .9rem !important; }
+  .header-right { gap: 10px !important; }
+
+  .content-area {
+    padding: 16px !important;
+    overflow: visible !important;
+  }
+
+  .search-input { width: 140px; }
+}

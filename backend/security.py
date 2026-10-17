@@ -50,3 +50,13 @@ SAFE_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def is_valid_email(email: str, max_len: int = 254) -> bool:
     return bool(email) and len(email) <= max_len and bool(SAFE_EMAIL_RE.match(email))
+
+from fastapi import Request
+
+def get_client_ip(request: Request) -> str:
+    """Ambil IP client dari header X-Forwarded-For (kalau di belakang proxy) 
+    atau fallback ke request.client."""
+    fwd = request.headers.get('X-Forwarded-For', '')
+    if fwd:
+        return fwd.split(',')[0].strip()
+    return request.client.host if request.client else 'unknown'

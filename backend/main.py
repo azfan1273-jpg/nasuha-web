@@ -15,7 +15,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from routes.analytics import analytics_router
+from routes.auth import auth_router
 from routes.clay_engine import clay_router
+from routes.downloads import downloads_router
 
 # Logger biar traceback muncul di terminal server (bukan cuma 500 generic)
 logging.basicConfig(
@@ -33,7 +35,7 @@ app = FastAPI(title="Nasuha Web API", docs_url=None, redoc_url=None, openapi_url
 # ---------------------------------------------------------------------------
 # CORS: batasi origin di production
 # ---------------------------------------------------------------------------
-_dev = os.environ.get('FLASK_ENV', 'production').lower() == 'development'
+_dev = os.environ.get('APP_ENV', 'production').lower() == 'development'
 _allowed_origins = [o.strip() for o in os.environ.get('ALLOWED_ORIGINS', '').split(',') if o.strip()]
 
 if _dev:
@@ -112,8 +114,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 # ---------------------------------------------------------------------------
 # Register routers
 # ---------------------------------------------------------------------------
-app.include_router(analytics_router, prefix="/api")
-app.include_router(clay_router, prefix="/api/clay")
+app.include_router(auth_router,      prefix="/api",      tags=["auth"])
+app.include_router(analytics_router, prefix="/api",      tags=["analytics"])
+app.include_router(downloads_router, prefix="/api",      tags=["downloads"])
+app.include_router(clay_router,      prefix="/api/clay", tags=["clay"])
 
 
 # ---------------------------------------------------------------------------
@@ -121,12 +125,12 @@ app.include_router(clay_router, prefix="/api/clay")
 # ---------------------------------------------------------------------------
 @app.get("/")
 async def root_index():
-    return FileResponse(os.path.join(frontend_folder, "index.html"))
+    return FileResponse(os.path.join(frontend_folder, "landing.html"))
 
 
 @app.get("/{full_path:path}")
 async def spa_fallback(full_path: str):
-    # /api/* yang tidak match router → JSON 404 (bukan index.html)
+    # /api/* yang tidak match router → JSON 404 (bukan landing.html)
     if full_path.startswith("api/") or full_path == "api":
         return JSONResponse(
             status_code=404,
@@ -152,11 +156,11 @@ async def spa_fallback(full_path: str):
             resp.headers['Expires'] = '0'
         return resp
 
-    # Route SPA / halaman web → index.html
-    return FileResponse(os.path.join(frontend_folder, "index.html"))
+    # Route SPA / halaman web → landing.html
+    return FileResponse(os.path.join(frontend_folder, "landing.html"))
 
 
 if __name__ == '__main__':
     import uvicorn
-    reload_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
-    uvicorn.run("main:app", host='127.0.0.1', port=8080, reload=reload_mode)
+    reload_mode = os.environ.get('APP_DEBUG', '0') == '1'
+    uvicorn.run("main:app", host='127.0.0.1', port=8081, reload=reload_mode)

@@ -8,27 +8,87 @@
 // =====================================================
 
 // =====================================================
-// UTILITIES
+// UTILITIES — loadComponent dengan inline fallback
 // =====================================================
 
+// Fallback HTML kalau fetch ke file gagal (proxy issue, file corrupt, dll)
+const COMPONENT_FALLBACKS = {
+  "components/sidebar.html": `
+    <aside class="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo-wrapper" id="sidebar-user-avatar">
+          <span style="font-size: 1rem;">👤</span>
+        </div>
+        <div class="brand-title" id="sidebar-user-name">Login Your Account</div>
+        <a href="akun.html" class="back-to-landing" title="Back to Account">←</a>
+      </div>
+      <ul class="nav-top">
+        <li class="nav-item active"><a href="#" data-page="Overview"><span>🔍</span><span>Overview</span></a></li>
+        <li class="nav-item"><a href="#" data-page="Akun"><span>👤</span><span>Akun</span></a></li>
+        <li class="nav-item"><a href="#" data-page="Database"><span>🗄️</span><span>Database</span></a></li>
+        <li class="nav-item"><a href="#" data-page="Clay Engine"><span>🧩</span><span>Clay Engine</span></a></li>
+        <li class="nav-item"><a href="#" data-page="Report"><span>📊</span><span>Report</span></a></li>
+      </ul>
+      <ul class="nav-bottom">
+        <li class="divider"></li>
+        <li class="nav-item"><a href="#" data-page="Download"><span>📥</span><span>Download</span></a></li>
+        <li class="nav-item"><a href="#" data-page="About US"><span>🏢</span><span>About US</span></a></li>
+        <li class="nav-item"><a href="#" data-page="Settings"><span>⚙️</span><span>Settings</span></a></li>
+      </ul>
+    </aside>
+  `,
+  "components/header.html": `
+    <div class="top-header">
+      <div class="header-left">
+        <div class="breadcrumb">
+          <span class="breadcrumb-item">Nasuha</span>
+          <span class="breadcrumb-sep">/</span>
+          <span id="current-page-title" class="breadcrumb-current">Database</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="action-btn" title="Notifications">🔔</button>
+        <div class="user-profile" id="user-profile-btn">
+          <div class="user-icon-wrapper"><span class="user-icon">🧺</span></div>
+          <div id="header-user-text" class="user-text-group">
+            <span class="text-login">Login</span>
+            <span class="text-separator">/</span>
+            <span class="text-register">Register</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+};
+
 async function loadComponent(elementId, filePath) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+
   try {
     const response = await fetch(filePath);
-    if (!response.ok) throw new Error(`HTTP ${response.status}: Gagal memuat ${filePath}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const html = await response.text();
-    const container = document.getElementById(elementId);
-    if (container) container.innerHTML = html;
+    container.innerHTML = html;
+    return;
   } catch (error) {
-    console.error(error);
-    const container = document.getElementById(elementId);
-    if (container) {
-      container.innerHTML = `<div style="color: #ff5252; padding: 20px;">
-        <h3>Gagal Memuat Komponen</h3>
-        <p>${escHTML(error.message)}</p>
-        <small>Pastikan <code>${escHTML(filePath)}</code> ada & server running.</small>
-      </div>`;
-    }
+    console.warn(`[loadComponent] fetch gagal "${filePath}": ${error.message}`);
   }
+
+  // Fallback: pakai inline HTML
+  const fallback = COMPONENT_FALLBACKS[filePath];
+  if (fallback) {
+    console.info(`[loadComponent] pakai fallback inline untuk "${filePath}"`);
+    container.innerHTML = fallback;
+    return;
+  }
+
+  // Gak ada fallback → tampil error
+  container.innerHTML = `<div style="color: #ff5252; padding: 20px;">
+    <h3>Gagal Memuat Komponen</h3>
+    <p>${escHTML(filePath)}</p>
+    <small>Cek koneksi atau proxy.</small>
+  </div>`;
 }
 
 function handleUnauthorized(reason = "Sesi berakhir") {

@@ -1,0 +1,139 @@
+/* ============================================================
+   LANDING FOOTER — Adjusted to Nasuha Labs Design System
+   ============================================================ */
+
+.landing-footer {
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-subtle);
+  padding: 60px 24px 30px 24px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  margin-top: 80px;
+}
+
+.footer-container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+}
+
+/* ---------- GRID TOP (5 KOLOM) ---------- */
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.8fr repeat(4, 1fr);
+  gap: 32px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Kolom Brand */
+.footer-brand .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.footer-desc {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  max-width: 280px;
+}
+
+.system-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #22c55e;
+  border-radius: var(--r-full);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+/* Kolom Navigasi */
+.footer-col h4 {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.footer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-col a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: color 0.12s ease;
+  padding: 2px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-col a svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.8;
+  transition: opacity 0.12s ease;
+}
+
+.footer-col a:hover {
+  color: var(--accent);
+}
+
+.footer-col a:hover svg {
+  opacity: 1;
+}
+
+/* ---------- BOTTOM BAR ---------- */
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 900px) {
+  .landing-footer {
+    padding: 40px 20px 24px 20px;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .footer-bottom {
+    text-align: center;
+    justify-content: center;
+  }
+}

@@ -9,6 +9,11 @@
 <link rel="stylesheet" href="assets/css/pricing.css">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script 
+  type="text/javascript" 
+  src="https://app.sandbox.midtrans.com/snap/snap.js" 
+  data-client-key="Mid-client-HR-YLcuoLC3Jrj39">
+</script>
 </head>
 <body class="pricing-body">
 
@@ -238,7 +243,7 @@
 
   <!-- ============ BOTTOM CTA ============ -->
   <div class="pricing-bottom">
-    <button class="btn-primary btn-lg" id="btn-continue">Lanjut Pilih Paket</button>
+    <button class="btn-primary btn-lg" id="btn-continue">Lanjutkan di Aplikasi</button>
     <p class="secure-note">Pembayaran aman via Midtrans</p>
   </div>
 
@@ -248,17 +253,17 @@
 <div id="confirm-modal" class="modal-overlay hidden">
   <div class="modal-card confirm-card">
     <div class="confirm-icon">✨</div>
-    <h3 class="confirm-title">Konfirmasi Langganan</h3>
+    <h3 class="confirm-title">Beli Paket via Aplikasi</h3>
     <p class="confirm-desc">
-      Anda akan berlangganan paket <b id="confirm-plan-name">Premium</b> 
+      Anda memilih paket <b id="confirm-plan-name">Premium</b> 
       selama <b id="confirm-duration">1 Bulan</b> 
-      dengan total pembayaran <b id="confirm-price">Rp 150.000</b>.
+      (<b id="confirm-price">Rp 150.000</b>).
     </p>
-    <p class="confirm-note">Pastikan pilihan Anda sudah benar sebelum melanjutkan ke pembayaran.</p>
-    
+    <p class="confirm-note">Transaksi akan dilanjutkan di dalam aplikasi Nasuha Kasir Laundry untuk aktivasi instan.</p>
+
     <div class="confirm-actions">
       <button id="btn-cancel-confirm" class="plan-btn">Batal</button>
-      <button id="btn-ok-confirm" class="plan-btn btn-primary">Ya, Lanjutkan</button>
+      <button id="btn-ok-confirm" class="plan-btn btn-primary">Buka Aplikasi & Lanjutkan</button>
     </div>
   </div>
 </div>

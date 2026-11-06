@@ -43,8 +43,8 @@ logger = logging.getLogger(__name__)
 
 ALGORITHM_VERSION = "prediction-v2.1"
 
-MIN_UNIQUE_VISITS = 2          # minimal kunjungan unik supaya bisa dihitung siklus
-MATCH_WINDOW_DAYS = 1          # |predicted - today| <= 1 dianggap cocok
+MIN_UNIQUE_VISITS = 3          # minimal kunjungan unik supaya bisa dihitung siklus
+MATCH_WINDOW_DAYS = 0          # |predicted - today| <= 1 dianggap cocok
 DOW_MIN_SHARE = 0.40           # share hari minimum utk sinyal day-of-week (skor bonus)
 DOW_STRONG_SHARE = 0.60        # share minimum utk jadi kandidat prediksi standalone
 DOW_SCORE_CAP = 65             # plafon skor utk prediksi yang murni dari pola hari
@@ -92,14 +92,38 @@ def predict_arrivals(orders, timezone_str, accuracy_by_level=None,
                              accuracy_by_level)
 
     historical = []
+    active_today_codes = set() 
+    
+    # Daftar status yang artinya "masih di tempat cucian" (semua huruf kecil)
+    STATUS_AKTIF = ['antrian', 'proses', 'pending', 'cuci', 'setrika', 'belum selesai', 'antri']
+
     for o in orders:
         if is_cancelled_order(o):
             continue
+        
+        code = get_customer_code(o)
+        if not code:
+            continue
+            
+        # Ambil status, paksa jadi huruf kecil, dan hapus spasi di ujung
+        status_order = str(o.get("status") or "").strip().lower()
+        
+        # JIKA STATUS MASIH ANTRIAN/PROSES, MASUKIN BLACKLIST!
+        if status_order in STATUS_AKTIF:
+            active_today_codes.add(code)
+            continue # Skip, jangan dimasukin ke history
+
         dt = parse_datetime(o.get("created_at"))
         if not dt:
             continue
         d_local = dt.astimezone(tz).date()
-        if d_local >= today_local:
+        
+        # Tetap blacklist kalau orderannya dibuat hari ini (walaupun udah SELESAI)
+        if d_local == today_local:
+            active_today_codes.add(code) 
+            continue 
+
+        if d_local > today_local:
             continue
         historical.append((o, d_local))
 
@@ -120,6 +144,15 @@ def predict_arrivals(orders, timezone_str, accuracy_by_level=None,
 
     predictions = []
     for code, dates_map in by_customer.items():
+        # --- TAMBAHAN BARU: Kalau dia udah antri hari ini, skip prediksinya ---
+        if code in active_today_codes:
+            skipped.append({
+                "code": code, 
+                "name": customer_meta[code]["name"], 
+                "reason": "sudah ada antrian/order hari ini"
+            })
+            continue
+
         p = _analyze_customer(code, dates_map, customer_meta[code],
                               today_local, tz, accuracy_by_level, skipped,
                               correction=corrections.get(code, 0))
@@ -197,25 +230,19 @@ def _analyze_customer(code, dates_map, meta, today_local, tz,
     candidates = _build_candidate_dates(unique_dates, intervals, last_visit,
                                         today_local,
                                         primary_cycle=adjusted_cycle)
-    if phase is not None and adjusted_cycle == primary_cycle:
-        def _in_phase(dt):
-            return (next_due - dt).days % primary_cycle in phase
-        filtered = [c for c in candidates if _in_phase(c[0])]
-        keep = []
-        for c in filtered:
-            # Kandidat dari sumber non-siklus (weekday-calendar /
-            # weekday-pattern) tidak terikat fase proyeksi — biarkan.
-            if c[2] not in ("primary-cycle", "dominant-interval"):
-                keep.append(c)
-                continue
-            dd = (c[0] - today_local).days
-            # Kandidat MASA DEPAN (termasuk besok) harus benar-benar
-            # kelipatan dari kunjungan terakhir; kalau fase hasil filter
-            # bukan kelipatan murni (misal lompatan ±1 akibat koreksi),
-            # buang — mencegah prediksi "hantu" di hari yang salah.
-            if dd <= 0 or (c[0] - last_visit).days % int(round(c[1])) == 0:
-                keep.append(c)
-        candidates = keep
+    #if phase is not None and adjusted_cycle == primary_cycle:
+     #   keep = []
+      #  for c in candidates:
+       #     # KUNCI PERUBAHAN: Kalau tanggalnya HARI INI, amankan! Jangan difilter fase.
+        #    if (c[0] - today_local).days == 0:
+         #       keep.append(c)
+          #      continue
+            
+            # Kalau bukan hari ini, baru cek fase
+           # if (next_due - c[0]).days % primary_cycle in phase:
+            #    if c[2] not in ("primary-cycle", "dominant-interval") or (c[0] - last_visit).days % int(round(c[1])) == 0:
+             #       keep.append(c)
+        #candidates = keep
 
     dow_share = _day_of_week_share(unique_dates, today_local.weekday(), tz)
 
@@ -253,7 +280,7 @@ def _analyze_customer(code, dates_map, meta, today_local, tz,
              for c in {primary_cycle} | set(intervals)), default=None)
         pred = (last_visit + timedelta(days=nearest[1])).isoformat() if nearest else "?"
         skipped.append({"code": code, "name": name,
-                        "reason": f"prediksi terdekat {pred} (di luar window)"})
+                        "reason": f"prediksi terdekat {pred} (tidak ada kandidat valid)"})
         return None
 
     _, cand_date, cycle_used, source, delta, score = best
@@ -261,21 +288,28 @@ def _analyze_customer(code, dates_map, meta, today_local, tz,
     if rel > MAX_RELATIVE_DEVIATION and source != "weekday-pattern":
         # Segment "sporadis" tetap diberi peluang dengan skor terpotong,
         # karena bagi mereka pola interval emang nggak pernah rapi.
-        if segment == "sporadic" and dow_share >= DOW_MIN_SHARE:
-            score = min(score, SPORADIC_SCORE_CAP)
-        else:
             skipped.append({"code": code, "name": name,
                             "reason": f"pola liar (rel-dev {rel:.2f})"})
             return None
 
     agg = _aggregate_transactions(dates_map)
-    confidence = _confidence_level(score)
-
+    
+    # Kita bikin reason di awal biar bisa ditambahin teks
     reason = (
         f"Pola hari ({int(dow_share * 100)}% kunjungan di hari ini)"
         if source == "weekday-pattern"
         else f"Siklus {cycle_used} hari ({method}, {source})"
     )
+
+    # --- TAMBAHAN BARU: Penalti kalau udah kelamaan ---
+    days_since = (today_local - last_visit).days
+    if days_since > (cycle_used + 3): 
+        score = max(0, score - 30)    
+        reason += " [Terlalu lama absen]"
+    # --------------------------------------------------
+
+    confidence = _confidence_level(score)
+
     if correction:
         reason += f" + koreksi {correction:+d}h dari riwayat"
 
@@ -314,42 +348,17 @@ def _analyze_customer(code, dates_map, meta, today_local, tz,
 
 def _build_candidate_dates(unique_dates, intervals, last_visit, today_local,
                            primary_cycle=None):
-    """Kandidat tanggal prediksi dari SEMUA interval yang sering muncul.
-
-    Multi-cycle: misal interval [7,7,7,1,6,1,6] → kandidat dari cycle 7
-    (mingguan) dan kombinasi 1/6 (weekend), bukan cuma median-nya.
-    Kandidat juga mencakup proyeksi kalender weekday (lihat
-    _weekday_calendar_candidates) supaya customer "setiap Rabu" tetap
-    terprediksi walau siklus median-nya meleset.
-
-    primary_cycle: kalau diisi (sudah dikoreksi feedback loop), pakai
-    angka itu utk proyeksi utama — bukan hasil detect_cycle mentah.
-    """
     freq = Counter(intervals)
     candidates = []
     seen = set()
 
     def add(date_val, cycle_used, source):
-        # Ambang "sudah lewat": kandidat yang jatuh > MATCH_WINDOW_DAYS
-        # sebelum HARI INI dibuang. Batasnya today (bukan last_visit) —
-        # kalau dibatasi last_visit, pelanggan cycle-nya lebih panjang dari
-        # selisih ke hari ini jadi nggak pernah punya kandidat sama sekali
-        # (kasus: cycle 7, datang kemarin → seharusnya terprediksi besok).
         if date_val in seen:
             return
         if (today_local - date_val).days > MATCH_WINDOW_DAYS:
             return
-        # Sinyal kalender "tanggal muda/gajian": kalau pelanggan hampir
-        # selalu datang di tanggal 1-10, proyeksi yang jatuh di luar
-        # paruh itu dibuang (kebalikannya juga berlaku utk akhir bulan).
-        if month_half and date_val.day > 10:
-            return
-        if month_late and date_val.day < 25:
-            return
         seen.add(date_val)
         candidates.append((date_val, cycle_used, source))
-
-    month_half, month_late = _month_half_pattern(unique_dates)
 
     detected = detect_cycle(intervals)
     primary = detected[0] if primary_cycle is None else max(1, int(primary_cycle))
@@ -357,65 +366,44 @@ def _build_candidate_dates(unique_dates, intervals, last_visit, today_local,
     horizon = today_local + timedelta(days=MATCH_WINDOW_DAYS)
 
     def project(cyc, source, max_steps=60):
-        # Proyeksi multi-kelipatan DARI SETIAP tanggal historis, bukan cuma
-        # last_visit. Kalau hanya last_visit yang jadi anchor, pelanggan
-        # cycle-nya lebih panjang dari jarak ke hari ini (misal weekend
-        # cycle 7, terakhir Sabtu → harusnya terprediksi Sabtu besok)
-        # tidak akan pernah punya kandidat di window, karena kelipatan
-        # murni dari last_visit selalu melewati horizon.
         for anchor in reversed(unique_dates):
             k = 1
             while True:
                 da = anchor + timedelta(days=cyc * k)
                 if da > horizon:
                     break
-                # anchor historis TIDAK BOLEH memunculkan tanggal ≤
-                # kunjungan terakhir — itu masa lalu, bukan prediksi.
-                # (hanya proyeksi dari last_visit yang boleh jatuh sedikit
-                # di belakang hari ini: kasus "harusnya kemarin belum datang")
                 if da > last_visit or (da == last_visit and anchor == last_visit):
                     add(da, cyc, source)
                 k += 1
 
     total_iv = sum(freq.values())
     rel_primary = detected[2] if detected else 999.0
-    # Kalau cycle sudah dikoreksi feedback loop, kita percaya prosesnya
-    # sudah belajar — proyeksikan walau rel-dev historis agak tinggi.
+    
     if rel_primary <= MAX_RELATIVE_DEVIATION or primary_cycle is not None:
-        # cycle primer kredibel → proyeksikan kelipatannya sampai horizon
         project(primary, "primary-cycle")
 
-    # interval dominan (>=40% histori) selalu jadi kandidat, apapun cycle-nya
     for cyc, count in list(freq.items()):
-        if cyc == primary or count < 3 or count / total_iv < 0.4:
+        if cyc == primary or count < 2 or count / total_iv < 0.4:
             continue
         project(cyc, "dominant-interval", max_steps=30)
 
-    # 2) Proyeksi kalender weekday: hari-hari yang pernah dikunjungi,
-    #    dimajukan ke kemunculan terdekat ≤ today+window
     visited_weekdays = {d.weekday() for d in unique_dates}
     for wd in visited_weekdays:
         d = today_local
         while d.weekday() != wd:
             d -= timedelta(days=1)
-        # majukan sampai masuk window [today-1, today+1]
         while d < today_local - timedelta(days=MATCH_WINDOW_DAYS):
             d += timedelta(days=7)
-        # kalau proyeksi masih sebelum kunjungan terakhir, geser lagi
         while d <= last_visit:
             d += timedelta(days=7)
         if d <= today_local + timedelta(days=MATCH_WINDOW_DAYS) and d > last_visit:
             visits_on_wd = [x for x in unique_dates if x.weekday() == wd]
             share = len(visits_on_wd) / len(unique_dates)
-            # Guard anti-spam (kalender mingguan murni = prior lemah):
-            #   - setia maks 2 hari/minggu
-            #   - share hari itu >= ambang kuat
-            #   - minimal 3 kunjungan di hari itu ATAU histori total masih kecil
-            #     (belum bisa lihat pola interval yang jelas)
             if (len(visited_weekdays) <= 2 and share >= DOW_STRONG_SHARE
                     and (len(visits_on_wd) >= 3 or len(unique_dates) < 5)):
                 add(d, 7, "weekday-calendar")
 
+    # HANYA RETURN DI SINI BRO, JANGAN DI ATAS!
     return candidates
 
 
@@ -451,7 +439,7 @@ def _score(delta, rel, tx, dow_bonus, via_dow, segment="regular"):
     elif delta == 0:
         timing = 1.0
     else:
-        timing = 0.75
+        timing = 0.3
 
     consistency = max(0.0, min(1.0, 1.0 - rel))          # rel 0 → 1.0 ; rel 1 → 0
     history = min(1.0, 0.4 + 0.1 * tx)                    # tx2→0.6 … tx6+→1.0

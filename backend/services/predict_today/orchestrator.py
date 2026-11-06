@@ -17,7 +17,7 @@ from services.shared.supabase_user_client import get_user_client
 logger = logging.getLogger(__name__)
 
 # Skor di bawah ini dianggap spekulasi -> jangan tampil di list utama.
-MIN_DISPLAY_SCORE = 80
+MIN_DISPLAY_SCORE = 85
 # Urutan operasional: yang jatuh hari ini dulu, lalu besok, lalu telat.
 _STATUS_ORDER = {"Hari ini": 0, "Besok": 1}
 
@@ -138,7 +138,7 @@ def _fetch_evaluated_logs(token, store_id, days_back=90):
             .select("customer_code, outcome_status, outcome_delta_days, confidence_level")
             .eq("store_id", store_id)
             .in_("outcome_status", ["hit", "miss"])
-            .gte("prediction_target_date", since)
+            .gte("target_date", since)
             .execute()
         )
         return res.data or []

@@ -1,76 +1,168 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Syarat dan Ketentuan - Nasuha Labs</title>
-    <link rel="stylesheet" href="assets/css/tokens.css">
-    <link rel="stylesheet" href="assets/css/components.css">
-    <link rel="stylesheet" href="assets/css/privacy.css">
-    <link rel="stylesheet" href="assets/css/footer_landing.css">
-    <style>
-        /* Sedikit tambahan agar teks mudah dibaca */
-        .legal-content { max-width: 800px; margin: 120px auto 60px; padding: 0 20px; line-height: 1.6; color: #e2e8f0; }
-        .legal-content h1 { font-size: 2.5rem; margin-bottom: 20px; color: #fff; }
-        .legal-content h2 { font-size: 1.5rem; margin-top: 30px; margin-bottom: 15px; color: #f472b6; }
-        .legal-content p { margin-bottom: 15px; }
-        .legal-content ul { margin-bottom: 15px; padding-left: 20px; }
-        .legal-content li { margin-bottom: 8px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Syarat dan Ketentuan — Nasuha Labs</title>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/components.css">
+<link rel="stylesheet" href="assets/css/landing.css">
+<link rel="stylesheet" href="assets/css/privacy.css">
+<!-- 🟢 TAMBAHAN: Load CSS Footer -->
+<link rel="stylesheet" href="assets/css/footer_landing.css">
 </head>
-<body>
-    <!-- Include Header lu di sini jika ada, misal: -->
-    <!-- <div id="header-container"></div> -->
+<body class="landing-body">
 
-    <main class="legal-content">
-        <h1>Syarat dan Ketentuan Penggunaan Aplikasi Nasuha Laundry</h1>
-        <p>Terakhir diperbarui: 12 November 2026</p>
+<!-- ============ NAVBAR ============ -->
+<nav class="landing-nav">
+  <div class="nav-left">
+    <a href="landing.html" class="brand">
+      <span class="brand-mark">⚡</span>
+      <span class="brand-name">nasuha labs</span>
+    </a>
+  </div>
+</nav>
 
-        <p>Dengan mengunduh, mengakses, atau menggunakan aplikasi Nasuha Laundry (selanjutnya disebut "Aplikasi"), Anda setuju untuk terikat oleh Syarat dan Ketentuan ini. Jika Anda tidak setuju, mohon untuk tidak menggunakan Aplikasi.</p>
+<!-- ============ CONTENT ============ -->
+<main class="policy-container">
+  <a href="landing.html" class="back-link">← Kembali ke Landing Page</a>
+  
+  <h1 class="policy-title">Syarat dan Ketentuan</h1>
+  <div class="policy-date">Terakhir diperbarui: 12 November 2026</div>
 
-        <h2>1. Deskripsi Layanan</h2>
-        <p>Aplikasi Nasuha Laundry adalah platform perangkat lunak yang berfungsi sebagai:</p>
+  <section class="policy-section">
+    <p>Selamat datang di <strong>Nasuha Laundry</strong>. Syarat dan Ketentuan ini mengatur penggunaan Anda atas aplikasi Nasuha Laundry yang dikembangkan oleh <strong>Nasuha Labs</strong> ("Kami").</p>
+    <p>Dengan mengunduh, mengakses, atau menggunakan Aplikasi, Anda setuju untuk terikat oleh Syarat dan Ketentuan ini. Jika Anda tidak setuju, mohon untuk tidak menggunakan Aplikasi.</p>
+  </section>
+
+  <section class="policy-section">
+    <h2>1. Deskripsi Layanan</h2>
+    <p>Aplikasi Nasuha Laundry adalah platform perangkat lunak yang berfungsi sebagai:</p>
+    <ul>
+      <li>Sistem Point of Sale (POS) atau kasir untuk pemilik usaha dan staf laundry.</li>
+      <li>Platform pemantauan dan pemesanan mandiri bagi pelanggan (Customer).</li>
+    </ul>
+    <p>Layanan mencakup pencatatan transaksi, analitik bisnis, manajemen pelanggan, dan fitur pemesanan online.</p>
+  </section>
+
+  <section class="policy-section">
+    <h2>2. Akun Pengguna</h2>
+    <ul>
+      <li>Anda wajib mendaftar untuk menggunakan Aplikasi. Anda bertanggung jawab penuh atas kerahasiaan email dan password akun Anda.</li>
+      <li>Aplikasi ini memiliki sistem peran (role) yang berbeda: Pemilik Usaha (Owner), Kasir (Staff), dan Pelanggan (Customer). Anda dilarang menyalahgunakan peran yang diberikan.</li>
+      <li>Anda wajib memberikan informasi yang akurat dan terbaru.</li>
+    </ul>
+  </section>
+
+  <section class="policy-section">
+    <h2>3. Langganan dan Pembayaran (Premium)</h2>
+    <ul>
+      <li>Beberapa fitur di Aplikasi mungkin memerlukan langganan berbayar (Premium).</li>
+      <li>Pembayaran dan pengelolaan langganan diproses melalui pihak ketiga (RevenueCat dan Google Play Store). Kami tidak menyimpan data kartu kredit atau pembayaran Anda.</li>
+      <li>Langganan akan diperpanjang secara otomatis sesuai dengan paket yang dipilih, kecuali dibatalkan sebelum tanggal perpanjangan.</li>
+    </ul>
+  </section>
+
+  <section class="policy-section">
+    <h2>4. Tanggung Jawab Pengguna</h2>
+    <ul>
+      <li>Pemilik usaha bertanggung jawab penuh atas validitas data transaksi, harga layanan, dan data pelanggan yang dimasukkan ke dalam Aplikasi.</li>
+      <li>Pelanggan bertanggung jawab atas kebenaran data alamat penjemputan (pickup) dan nomor telepon saat melakukan pemesanan.</li>
+      <li>Anda dilarang menggunakan Aplikasi untuk kegiatan ilegal, penipuan, atau melanggar hukum yang berlaku di Indonesia.</li>
+    </ul>
+  </section>
+
+  <section class="policy-section">
+    <h2>5. Kekayaan Intelektual</h2>
+    <p>Seluruh kode, desain, logo, dan konten dalam Aplikasi adalah milik Nasuha Labs. Anda tidak diizinkan untuk menyalin, memodifikasi, atau mendistribusikan ulang bagian mana pun dari Aplikasi tanpa izin tertulis dari kami.</p>
+  </section>
+
+  <section class="policy-section">
+    <h2>6. Pembatasan Tanggung Jawab</h2>
+    <p>Aplikasi ini disediakan "sebagaimana adanya". Kami tidak menjamin bahwa Aplikasi akan selalu bebas dari gangguan (error), bug, atau downtime. Kami tidak bertanggung jawab atas kerugian finansial atau kehilangan data yang diakibatkan oleh kesalahan penggunaan atau gangguan server di luar kendali kami.</p>
+  </section>
+
+  <section class="policy-section">
+    <h2>7. Perubahan Ketentuan</h2>
+    <p>Kami berhak mengubah Syarat dan Ketentuan ini kapan saja. Perubahan akan diumumkan melalui Aplikasi atau situs web kami. Penggunaan Aplikasi secara berkelanjutan setelah perubahan berarti Anda menyetujui ketentuan baru tersebut.</p>
+  </section>
+
+  <section class="policy-section">
+    <h2>8. Hubungi Kami</h2>
+    <p>Jika Anda memiliki pertanyaan mengenai Syarat dan Ketentuan ini, silakan hubungi kami di: <strong>nasuha.labs@gmail.com</strong>.</p>
+  </section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<!-- FOOTER DIPASTIKAN DI LUAR TAG <main> BIAR NGGAK KETUTUPAN BACKGROUND -->
+<footer class="landing-footer">
+  <div class="footer-container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="landing.html" class="brand">
+          <span class="brand-mark">⚡</span>
+          <span class="brand-name">nasuha labs</span>
+        </a>
+        <p class="footer-desc">
+          Digital product studio building SaaS platforms, point-of-sale systems, and interactive 2D games.
+        </p>
+        <div class="system-status">
+          <span class="status-dot"></span>
+          <span>All Systems Operational</span>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Products</h4>
         <ul>
-            <li>Sistem Point of Sale (POS) atau kasir untuk pemilik usaha dan staf laundry.</li>
-            <li>Platform pemantauan dan pemesanan mandiri bagi pelanggan (Customer).</li>
+          <li><a href="https://nasuhakasir.vercel.app" target="_blank">Kasir POS Laundry</a></li>
+          <li><a href="#">Clay Engine</a></li>
+          <li><a href="#">2D Game Studio</a></li>
+          <li><a href="#">Financial Reports</a></li>
         </ul>
-        <p>Layanan mencakup pencatatan transaksi, analitik bisnis, manajemen pelanggan, dan fitur pemesanan online.</p>
+      </div>
 
-        <h2>2. Akun Pengguna</h2>
+      <div class="footer-col">
+        <h4>Resources</h4>
         <ul>
-            <li>Anda wajib mendaftar untuk menggunakan Aplikasi. Anda bertanggung jawab penuh atas kerahasiaan email dan password akun Anda.</li>
-            <li>Aplikasi ini memiliki sistem peran (role) yang berbeda: Pemilik Usaha (Owner), Kasir (Staff), dan Pelanggan (Customer). Anda dilarang menyalahgunakan peran yang diberikan.</li>
-            <li>Anda wajib memberikan informasi yang akurat dan terbaru.</li>
+          <li><a href="#">Documentation</a></li>
+          <li><a href="#">Developer API</a></li>
+          <li><a href="#">Server Status</a></li>
         </ul>
+      </div>
 
-        <h2>3. Langganan dan Pembayaran (Premium)</h2>
+      <div class="footer-col">
+        <h4>Legal</h4>
         <ul>
-            <li>Beberapa fitur di Aplikasi mungkin memerlukan langganan berbayar (Premium).</li>
-            <li>Pembayaran dan pengelolaan langganan diproses melalui pihak ketiga (RevenueCat dan Google Play Store). Kami tidak menyimpan data kartu kredit atau pembayaran Anda.</li>
-            <li>Langganan akan diperpanjang secara otomatis sesuai dengan paket yang dipilih, kecuali dibatalkan sebelum tanggal perpanjangan.</li>
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="delete-account.html">Delete Account</a></li> 
+          <li><a href="terms-of-service.html">Terms of Service</a></li>
+          <li><a href="#">Security</a></li>
+          <li><a href="#">Refund Policy</a></li>
         </ul>
+      </div>
 
-        <h2>4. Tanggung Jawab Pengguna</h2>
+      <div class="footer-col">
+        <h4>Connect</h4>
         <ul>
-            <li>Pemilik usaha bertanggung jawab penuh atas validitas data transaksi, harga layanan, dan data pelanggan yang dimasukkan ke dalam Aplikasi.</li>
-            <li>Pelanggan bertanggung jawab atas kebenaran data alamat penjemputan (pickup) dan nomor telepon saat melakukan pemesanan.</li>
-            <li>Anda dilarang menggunakan Aplikasi untuk kegiatan ilegal, penipuan, atau melanggar hukum yang berlaku di Indonesia.</li>
+          <li>
+            <a href="mailto:nasuha.labs@gmail.com">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+              Contact CS (Email)
+            </a>
+          </li>
         </ul>
+      </div>
+    </div>
 
-        <h2>5. Kekayaan Intelektual</h2>
-        <p>Seluruh kode, desain, logo, dan konten dalam Aplikasi adalah milik Nasuha Labs. Anda tidak diizinkan untuk menyalin, memodifikasi, atau mendistribusikan ulang bagian mana pun dari Aplikasi tanpa izin tertulis dari kami.</p>
+    <div class="footer-bottom">
+      <p>&copy; <span id="footer-year">2026</span> Nasuha Labs. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
 
-        <h2>6. Pembatasan Tanggung Jawab</h2>
-        <p>Aplikasi ini disediakan "sebagaimana adanya". Kami tidak menjamin bahwa Aplikasi akan selalu bebas dari gangguan (error), bug, atau downtime. Kami tidak bertanggung jawab atas kerugian finansial atau kehilangan data yang diakibatkan oleh kesalahan penggunaan atau gangguan server di luar kendali kami.</p>
-
-        <h2>7. Perubahan Ketentuan</h2>
-        <p>Kami berhak mengubah Syarat dan Ketentuan ini kapan saja. Perubahan akan diumumkan melalui Aplikasi atau situs web kami. Penggunaan Aplikasi secara berkelanjutan setelah perubahan berarti Anda menyetujui ketentuan baru tersebut.</p>
-
-        <h2>8. Hubungi Kami</h2>
-        <p>Jika Anda memiliki pertanyaan mengenai Syarat dan Ketentuan ini, silakan hubungi kami di: <strong>nasuha.labs@gmail.com</strong>.</p>
-    </main>
-
-    <!-- Include Footer lu di sini -->
-    <!-- <div id="footer-container"></div> -->
+<script src="assets/js/security.js"></script>
+<script src="assets/js/privacy.js"></script>
+<script src="assets/js/footer_landing.js"></script>
 </body>
 </html>

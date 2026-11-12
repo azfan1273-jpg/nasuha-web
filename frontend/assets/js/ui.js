@@ -5,7 +5,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   setupSidebarToggle();
   setupNavigation();
-  
+
   // Render halaman awal (Product)
   renderProducts();
 });
@@ -18,16 +18,16 @@ function setupSidebarToggle() {
 
     if (toggleBtn || spacer) {
       e.preventDefault();
-      e.stopPropagation(); 
-      
+      e.stopPropagation();
+
       const sidebar = document.getElementById('sidebar');
       const icon = document.getElementById('toggle-icon');
-      
+
       if (sidebar) {
         sidebar.classList.toggle('collapsed');
         if (icon) {
-          icon.innerHTML = sidebar.classList.contains('collapsed') 
-            ? '<polyline points="9 18 15 12 9 6"></polyline>' 
+          icon.innerHTML = sidebar.classList.contains('collapsed')
+            ? '<polyline points="9 18 15 12 9 6"></polyline>'
             : '<polyline points="15 18 9 12 15 6"></polyline>';
         }
       }
@@ -36,34 +36,61 @@ function setupSidebarToggle() {
 }
 
 // 2. FUNGSI NAVIGASI MENU
+// (pake event delegation biar submenu Clay Engine ikut ke-handle)
 function setupNavigation() {
-  const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
-  
-  navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (item.id === 'toggle-sidebar') return; 
+  const sidebarNav = document.querySelector('.sidebar-nav');
+  if (!sidebarNav) return;
+
+  sidebarNav.addEventListener('click', (e) => {
+    // (a) Submenu Clay Engine (Predict Today / Chart Omzet)
+    const subitem = e.target.closest('.nav-subitem');
+    if (subitem) {
       e.preventDefault();
-      
-      navItems.forEach(nav => nav.classList.remove('active'));
-      item.classList.add('active');
-      
-      const target = item.getAttribute('data-target');
-      const contentArea = document.getElementById('content-area');
-      
-      // Routing Halaman
-      if (target === 'product') {
-        renderProducts();
-      } else if (target === 'clay') {
-        if (typeof renderClayEngine === 'function') renderClayEngine();
-      } else if (target === 'team') {
-        contentArea.innerHTML = `<div class="page-title"><h1>Team</h1></div><p>Halaman Team belum tersedia.</p>`;
-      } else if (target === 'database') {
-        contentArea.innerHTML = `<div class="page-title"><h1>Database</h1></div><p>Halaman Database belum tersedia.</p>`;
-      } else if (target === 'settings') {
-        contentArea.innerHTML = `<div class="page-title"><h1>Settings</h1></div><p>Halaman Settings belum tersedia.</p>`;
-      }
-    });
+      sidebarNav.querySelectorAll('.nav-item.active, .nav-subitem.active')
+        .forEach(n => n.classList.remove('active'));
+      subitem.classList.add('active');
+      routeTo(subitem.getAttribute('data-target'));
+      return;
+    }
+
+    // (b) Parent dropdown (Clay Engine) — cuma buka/tutup submenu,
+    //     gak langsung render halaman
+    const parent = e.target.closest('.nav-parent');
+    if (parent) {
+      e.preventDefault();
+      parent.closest('.nav-group').classList.toggle('open');
+      return;
+    }
+
+    // (c) Menu biasa (Product, Team, Database, Settings)
+    const item = e.target.closest('.nav-item');
+    if (!item || item.id === 'toggle-sidebar') return;
+    e.preventDefault();
+    sidebarNav.querySelectorAll('.nav-item.active, .nav-subitem.active')
+      .forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    routeTo(item.getAttribute('data-target'));
   });
+}
+
+// 2b. ROUTING HALAMAN
+function routeTo(target) {
+  const contentArea = document.getElementById('content-area');
+  if (!contentArea) return;
+
+  if (target === 'product') {
+    renderProducts();
+  } else if (target === 'clay-predict') {
+    if (typeof renderClayEngine === 'function') renderClayEngine();
+  } else if (target === 'clay-chart') {
+    if (typeof renderAnalyticsChart === 'function') renderAnalyticsChart();
+  } else if (target === 'team') {
+    contentArea.innerHTML = `<div class="page-title"><h1>Team</h1></div><p>Halaman Team belum tersedia.</p>`;
+  } else if (target === 'database') {
+    contentArea.innerHTML = `<div class="page-title"><h1>Database</h1></div><p>Halaman Database belum tersedia.</p>`;
+  } else if (target === 'settings') {
+    contentArea.innerHTML = `<div class="page-title"><h1>Settings</h1></div><p>Halaman Settings belum tersedia.</p>`;
+  }
 }
 
 // 3. RENDER HALAMAN PRODUCT
@@ -85,7 +112,7 @@ function renderProducts() {
 
   contentArea.innerHTML = `
     <div class="page-title"><h1>Product</h1></div>
-    
+
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="search-input">

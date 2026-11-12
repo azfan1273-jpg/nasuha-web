@@ -1,0 +1,79 @@
+/* ============================================================
+   CLAY.CSS — Dropdown menu Clay Engine + halaman turunannya
+   (Predict Today, Chart Piutang)
+   Pake variabel dari tokens.css (Sakura Night)
+   ============================================================ */
+
+/* ---------- Submenu dropdown di sidebar ---------- */
+.nav-group .nav-submenu {
+  display: none;
+  margin: 2px 0 6px;
+}
+.nav-group.open .nav-submenu {
+  display: block;
+}
+
+/* Chevron di parent menu, muter 90° pas kebuka */
+.nav-parent .chev {
+  margin-left: auto;
+  transition: transform .15s ease;
+  flex-shrink: 0;
+}
+.nav-group.open .nav-parent .chev {
+  transform: rotate(90deg);
+}
+
+/* Item di dalam dropdown */
+.nav-subitem {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px 8px 40px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.nav-subitem:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.nav-subitem.active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+/* ---------- Halaman Chart Piutang ---------- */
+.ohlc-legend {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+/* Toggle timeframe (1D / 4H) */
+.tf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tf-btn {
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.tf-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.tf-btn.active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent);
+}
